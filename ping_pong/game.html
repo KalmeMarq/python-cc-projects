@@ -1,0 +1,175 @@
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+</style>
+
+<canvas id="canvas"></canvas>
+<script>
+
+/** @type {HTMLCanvasElement} */
+const canvas = document.getElementById('canvas');
+
+/** @type {CanvasRenderingContext2D} */
+const ctx = canvas.getContext('2d');
+
+ctx.canvas.width = innerWidth;
+ctx.canvas.height = innerHeight;
+
+const keys = {}
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true
+});
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false
+});
+
+const player1 = {
+  y: innerHeight / 2 - 50,
+  vel: 0
+}
+
+const player2 = {
+  y: innerHeight / 2 - 50,
+  vel: 0
+}
+
+const ball = {
+  x: 40,
+  y: 20,
+  velX: 6,
+  velY: 6
+}
+
+const BAR_VEL = 4
+
+let gameState = 0
+let won = -1
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (gameState == 1) {
+    if (ball.y + 7 >= innerHeight) {
+      ball.velY = -ball.velY;
+    }
+
+    if (ball.x + 7 >= innerWidth) {
+      ball.velX = -ball.velX;
+      gameState = 2;
+      won = 0
+    }
+
+    if (ball.y < 0) {
+      ball.velY = -ball.velY;
+    }
+
+    if (ball.x < 0) {
+      ball.velX = -ball.velX;
+      gameState = 2;
+      won = 1
+    }
+    
+    ball.x += ball.velX;
+    ball.y += ball.velY;
+
+    player1.y += player1.vel;
+    player2.y += player2.vel;
+
+    if (ball.x >= 20 && ball.x <= 40 && ball.y >= player1.y && ball.y < player1.y + 100) {
+      ball.velX = -ball.velX;
+    }
+
+    if (ball.x >= innerWidth - 20 - 20 && ball.x <= innerWidth - 20 && ball.y >= player2.y && ball.y < player2.y + 100) {
+      ball.velX = -ball.velX;
+    }
+  }
+
+  if (player1.y < 0) {
+    player1.y = 0;
+    player1.vel = 0;
+  }
+
+  if (player1.y + 100 >= innerHeight) {
+    player1.y = innerHeight - 100;
+    player1.vel = 0;
+  }
+
+  if (player2.y < 0) {
+    player2.y = 0;
+    player2.vel = 0;
+  }
+
+  if (player2.y + 100 >= innerHeight) {
+    player2.y = innerHeight - 100;
+    player2.vel = 0;
+  }
+
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(20, player1.y, 20, 100);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(innerWidth - 40, player2.y, 20, 100);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(ball.x, ball.y, 14, 14);
+
+  if (keys['KeyW']) {
+    player1.vel = -BAR_VEL
+  }
+
+  if (keys['KeyS']) {
+    player1.vel = BAR_VEL
+  }
+
+  if (keys['ArrowUp']) {
+    player2.vel = -BAR_VEL
+  }
+
+  if (keys['ArrowDown']) {
+    player2.vel = BAR_VEL
+  }
+
+  if (gameState == 0) {
+    ctx.fillStyle = 'rgb(0, 0, 0)';
+    ctx.globalAlpha = 0.5
+    ctx.fillRect(0, 0, innerWidth, innerHeight);
+    ctx.globalAlpha = 1
+    ctx.font = "30px sans-serif";
+    ctx.fillStyle = "white";
+    ctx.fillText("Press Space to Start!", innerWidth / 2 - 130, innerHeight / 2);
+  
+    if (keys['Space']) {
+      gameState = 1
+    }
+  } else if (gameState == 2) {
+    ctx.fillStyle = 'rgb(0, 0, 0)';
+    ctx.globalAlpha = 0.5
+    ctx.fillRect(0, 0, innerWidth, innerHeight);
+    ctx.globalAlpha = 1
+    ctx.font = "30px sans-serif";
+    ctx.fillStyle = "white";
+    ctx.fillText(won == 0 ? "Player 1 Won!" : "Player 2 Won!", innerWidth / 2 - 180, innerHeight / 2);
+    ctx.fillText("Press Space to Play Another Game!", innerWidth / 2 - 200, innerHeight / 2 + 40);
+  
+    if (keys['Space']) {
+      player1.y = innerHeight / 2 - 50
+      player1.vel = 0
+      player2.y = innerHeight / 2 - 50
+      player2.vel = 0
+      ball.x = 40;
+      ball.y = 20;
+      ball.velX = 6;
+      ball.velY = 6;
+      gameState = 1
+    }
+  }
+}
+
+requestAnimationFrame(animate);
+</script>
