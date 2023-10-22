@@ -16,6 +16,9 @@ pygame.display.set_icon(pygame.image.load("icon.png"))
 clock = pygame.time.Clock()
 running = True
 
+play_sound = pygame.mixer.Sound("play.mp3")
+eat_sound = pygame.mixer.Sound("eat.mp3")
+
 class Direction(Enum):
   UP = 1
   LEFT = 2
@@ -149,6 +152,7 @@ def update():
           game_state = GameState.START
       elif game_state == GameState.START or game_state == GameState.LOST or game_state == GameState.WON:
         if event.key == pygame.K_SPACE:
+          pygame.mixer.Sound.play(play_sound)
           game_state = GameState.PLAYING
           snake = Snake()
           food = Food()
@@ -164,6 +168,7 @@ def update():
       if snake_head[0] == food.x and snake_head[1] == food.y:
         snake.tail.append((food.x, food.y))
         food.reset()
+        pygame.mixer.Sound.play(eat_sound)
 
       for i in range(len(snake.tail) - 2):
         if snake.tail[i][0] == snake_head[0] and snake.tail[i][1] == snake_head[1]:
