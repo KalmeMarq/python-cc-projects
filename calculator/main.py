@@ -9,6 +9,7 @@ class ApplicationWindow(QMainWindow):
     super().__init__()
     self.ui = Ui_MainWindow()
     self.ui.setupUi(self)
+    self.setWindowIcon(QIcon("icon.png"))
     self.setWindowTitle("Calculadora")
     self.setWindowFlags(Qt.WindowType.MSWindowsFixedSizeDialogHint)
     self.ui.zero_button.clicked.connect(lambda _ : self.__type_number(0))
@@ -33,6 +34,100 @@ class ApplicationWindow(QMainWindow):
     listfont = self.ui.listWidget.font()
     listfont.setPointSize(12)
     self.ui.clear_history_button.clicked.connect(lambda _ : self.ui.listWidget.clear())
+
+    self.setStyleSheet("""
+  QMainWindow {
+    background: #202020;
+  }
+
+  QLabel {
+    color: white;
+    font-weight: 600;
+  }
+                       
+  QListWidget {
+    background: #202020;
+    border-color: #202020;
+    color: white;
+    outline: 0;
+  }
+
+  QPushButton {
+    border-radius: 4px;
+    margin: 2px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    background: #323232;
+    border: 1px solid #323232;
+  }
+
+  QPushButton:hover {
+    background: #3C3C3C;
+  }
+                       
+  QPushButton:pressed {
+    background: #323232;
+  }
+                       
+  .centerbuttons {
+    background: #3B3B3B;
+    border: 1px solid #3B3B3B;
+  }
+                      
+  .centerbuttons:hover {
+    background: #323232;
+  }
+                       
+  .centerbuttons:pressed {
+    background: #282828;
+  }
+""")
+    self.ui.equal_button.setStyleSheet("""
+  QPushButton {
+    background: #4CC2FF;
+    color: black;
+  }
+
+  QPushButton:hover {
+    background: #47B1E8;
+  }
+                       
+  QPushButton:pressed {
+    background: #42A1D2;
+  }
+""")
+    self.ui.clear_history_button.setStyleSheet("""
+font-size: 14px;
+""")
+    self.ui.switch_neg_button.setProperty('class', 'centerbuttons')
+    self.ui.dot_button.setProperty('class', 'centerbuttons')
+    self.ui.zero_button.setProperty('class', 'centerbuttons')
+    self.ui.one_button.setProperty('class', 'centerbuttons')
+    self.ui.two_button.setProperty('class', 'centerbuttons')
+    self.ui.three_button.setProperty('class', 'centerbuttons')
+    self.ui.four_button.setProperty('class', 'centerbuttons')
+    self.ui.five_button.setProperty('class', 'centerbuttons')
+    self.ui.six_button.setProperty('class', 'centerbuttons')
+    self.ui.seven_button.setProperty('class', 'centerbuttons')
+    self.ui.eight_button.setProperty('class', 'centerbuttons')
+    self.ui.nine_button.setProperty('class', 'centerbuttons')
+    self.ui.clear_history_button.setText("")
+    self.ui.clear_history_button.setIcon(QIcon("bin.png"))
+    self.ui.clear_history_button.setStyleSheet("""
+QPushButton {
+  background: transparent;
+  border-color: transparent;
+  }
+
+  QPushButton:hover {
+    background: #2D2D2D;
+  }
+                       
+  QPushButton:pressed {
+    background: #292929;
+  }
+""")
 
   def __type_number(self, num):
     if len(self.ui.output.text()) > 0 and self.ui.output.text()[-1] == '=':
