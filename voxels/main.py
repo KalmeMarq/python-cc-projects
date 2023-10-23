@@ -7,6 +7,7 @@ import math
 from utils import perspective
 import numpy as np
 import random
+from enum import Enum
 
 class TextureManager:
   def __init__(self):
@@ -64,18 +65,59 @@ class TileType:
     self.east_txr = east_txr
 
 
-TILE_TYPES[1] = TileType(1, 2, 0, 0, 0, 0)
+TILE_TYPES[1] = TileType(1, 3, 0, 0, 0, 0)
 TILE_TYPES[2] = TileType(1, 1, 1, 1, 1, 1)
-TILE_TYPES[3] = TileType(3, 3, 3, 3, 3, 3)
+TILE_TYPES[3] = TileType(4, 4, 4, 4, 4, 4)
+TILE_TYPES[4] = TileType(2, 2, 5, 5, 5, 5)
+TILE_TYPES[5] = TileType(6, 6, 6, 6, 6, 6)
+TILE_TYPES[6] = TileType(7, 7, 7, 7, 7, 7)
+TILE_TYPES[7] = TileType(8, 8, 8, 8, 8, 8)
 
 CHUNK_HEIGHT = 32
+
+class RenderLayer:
+  def __init__(self, index: int, begin_callback, end_callback) -> None:
+    self.__value = index
+    self.__begin_callback = begin_callback
+    self.__end_callback = end_callback
+
+  def begin(self):
+    self.__begin_callback()
+
+  def end(self):
+    self.__end_callback()
+
+  @property
+  def value(self):
+    return self.__value
+
+  def begin_solid_phase():
+    glDisable(GL_BLEND)
+
+  def end_solid_phase():
+    pass
+
+  def begin_translucent_phase():
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+  def end_translucent_phase():
+    glDisable(GL_BLEND)
+
+  def __eq__(self, __value: object) -> bool:
+    return isinstance(__value, RenderLayer) and __value.value == self.value
+
+RenderLayers = {
+  'SOLID': RenderLayer(0, RenderLayer.begin_solid_phase, RenderLayer.end_solid_phase),
+  'TRANSLUCENT': RenderLayer(1, RenderLayer.begin_translucent_phase, RenderLayer.end_translucent_phase)
+}
 
 class Chunk:
   def __init__(self, x: int, z: int):
     self.x = x
     self.z = z
     self.blocks = np.zeros(16 * 16 * CHUNK_HEIGHT, dtype=np.uint8)
-    self.list = glGenLists(1)
+    self.list = glGenLists(2)
     self.generate()
 
   def generate(self):
@@ -89,8 +131,9 @@ class Chunk:
           elif y == 15:
             self.blocks[(y * 16 + z) * 16 + x] = 1
           else:
-            if random.randrange(0, 200) < 1:
-              self.blocks[(y * 16 + z) * 16 + x] = 3
+            vl = random.randrange(0, 300)
+            if vl < 2:
+              self.blocks[(y * 16 + z) * 16 + x] = random.randrange(4, 8)
 
   def set_tile(self, x: int, y: int, z: int, tile_id: int):
     if x < 0 or x >= 16 or y < 0 or y >= CHUNK_HEIGHT or z < 0 or z >= 16:
@@ -102,8 +145,8 @@ class Chunk:
       return 0
     return self.blocks[(y * 16 + z) * 16 + x]
 
-  def rebuild_geometry(self, world: World, texture_manager: TextureManager):
-    glNewList(self.list, GL_COMPILE)
+  def rebuild_geometry(self, layer: RenderLayer, world: World, texture_manager: TextureManager):
+    glNewList(self.list + layer.value, GL_COMPILE)
     glEnable(GL_TEXTURE_2D)
     glBindTexture(GL_TEXTURE_2D, texture_manager.get("grass.png"))
 
@@ -117,7 +160,7 @@ class Chunk:
           bz = z + self.z * 16
 
           tile = world.get_tile(x, y, z)
-          if tile < 1:
+          if tile < 1 or tile == 7 and layer == RenderLayers['SOLID']:
             continue
 
           tile_type = TILE_TYPES[tile]
@@ -130,13 +173,13 @@ class Chunk:
           z1 = bz + 1.0
 
           if world.get_tile(bx, by - 1, bz) == 0:
-            u = (tile_type.down_txr % 2) * 16
-            v = tile_type.down_txr // 2 * 16
+            u = (tile_type.down_txr % 3) * 16
+            v = tile_type.down_txr // 3 * 16
 
-            u0 = u / 32.0
-            v0 = v / 32.0
-            u1 = (u + 16) / 32.0
-            v1 = (v + 16) / 32.0
+            u0 = u / 48.0
+            v0 = v / 48.0
+            u1 = (u + 16) / 48.0
+            v1 = (v + 16) / 48.0
 
             glColor4f(0.6, 0.6, 0.6, 1.0)
             glTexCoord2f(u0, v1)
@@ -149,13 +192,13 @@ class Chunk:
             glVertex3f(x1, y0, z1)
 
           if world.get_tile(bx, by + 1, bz) == 0:
-            u = (tile_type.up_txr % 2) * 16
-            v = tile_type.up_txr // 2 * 16
+            u = (tile_type.up_txr % 3) * 16
+            v = tile_type.up_txr // 3 * 16
 
-            u0 = u / 32.0
-            v0 = v / 32.0
-            u1 = (u + 16) / 32.0
-            v1 = (v + 16) / 32.0
+            u0 = u / 48.0
+            v0 = v / 48.0
+            u1 = (u + 16) / 48.0
+            v1 = (v + 16) / 48.0
 
             glColor4f(1.0, 1.0, 1.0, 1.0)
             glTexCoord2f(u1, v1)
@@ -168,13 +211,13 @@ class Chunk:
             glVertex3f(x0, y1, z1) 
 
           if world.get_tile(bx, by, bz - 1) == 0:
-            u = (tile_type.north_txr % 2) * 16
-            v = tile_type.north_txr // 2 * 16
+            u = (tile_type.north_txr % 3) * 16
+            v = tile_type.north_txr // 3 * 16
 
-            u0 = u / 32.0
-            v0 = v / 32.0
-            u1 = (u + 16) / 32.0
-            v1 = (v + 16) / 32.0
+            u0 = u / 48.0
+            v0 = v / 48.0
+            u1 = (u + 16) / 48.0
+            v1 = (v + 16) / 48.0
             
             glColor4f(0.6, 0.6, 0.6, 1.0)
             glTexCoord2f(u1, v0)
@@ -187,13 +230,13 @@ class Chunk:
             glVertex3f(x0, y0, z0)
 
           if world.get_tile(bx, by, bz + 1) == 0:
-            u = (tile_type.south_txr % 2) * 16
-            v = tile_type.south_txr // 2 * 16
+            u = (tile_type.south_txr % 3) * 16
+            v = tile_type.south_txr // 3 * 16
 
-            u0 = u / 32.0
-            v0 = v / 32.0
-            u1 = (u + 16) / 32.0
-            v1 = (v + 16) / 32.0
+            u0 = u / 48.0
+            v0 = v / 48.0
+            u1 = (u + 16) / 48.0
+            v1 = (v + 16) / 48.0
 
             glColor4f(0.6, 0.6, 0.6, 1.0)
             glTexCoord2f(u0, v0)
@@ -206,13 +249,13 @@ class Chunk:
             glVertex3f(x1, y1, z1)
 
           if world.get_tile(bx - 1, by, bz) == 0:
-            u = (tile_type.west_txr % 2) * 16
-            v = tile_type.west_txr // 2 * 16
+            u = (tile_type.west_txr % 3) * 16
+            v = tile_type.west_txr // 3 * 16
 
-            u0 = u / 32.0
-            v0 = v / 32.0
-            u1 = (u + 16) / 32.0
-            v1 = (v + 16) / 32.0
+            u0 = u / 48.0
+            v0 = v / 48.0
+            u1 = (u + 16) / 48.0
+            v1 = (v + 16) / 48.0
 
             glColor4f(0.8, 0.8, 0.8, 1.0)
             glTexCoord2f(u1, v0)
@@ -225,13 +268,13 @@ class Chunk:
             glVertex3f(x0, y0, z1)
 
           if world.get_tile(bx + 1, by, bz) == 0:
-            u = (tile_type.east_txr % 2) * 16
-            v = tile_type.east_txr // 2 * 16
+            u = (tile_type.east_txr % 3) * 16
+            v = tile_type.east_txr // 3 * 16
 
-            u0 = u / 32.0
-            v0 = v / 32.0
-            u1 = (u + 16) / 32.0
-            v1 = (v + 16) / 32.0
+            u0 = u / 48.0
+            v0 = v / 48.0
+            u1 = (u + 16) / 48.0
+            v1 = (v + 16) / 48.0
 
             glColor4f(0.8, 0.8, 0.8, 1.0)
             glTexCoord2f(u0, v1)
@@ -246,11 +289,11 @@ class Chunk:
     glEnd()
     glEndList()
 
-  def render(self):
-    glCallList(self.list)
+  def render(self, layer: RenderLayer):
+    glCallList(self.list + layer.value)
 
   def dispose(self):
-    glDeleteLists(self.list, 1)
+    glDeleteLists(self.list, 2)
 
 class World:
   def __init__(self, game: Game):
@@ -262,7 +305,8 @@ class World:
         self.chunks.append(Chunk(x, z))
 
     for chunk in self.chunks:
-      chunk.rebuild_geometry(self, game.texture_manager)
+      chunk.rebuild_geometry(RenderLayers['SOLID'], self, game.texture_manager)
+      chunk.rebuild_geometry(RenderLayers['TRANSLUCENT'], self, game.texture_manager)
 
   def set_tile(self, x: int, y: int, z: int, tile_id: int):
     cx = x // 16
@@ -279,8 +323,19 @@ class World:
     return self.chunks[cz * 2 + cx].get_tile(x % 16, y % CHUNK_HEIGHT, z % 16)
 
   def render(self):
+    RenderLayers['SOLID'].begin()
+
     for chunk in self.chunks:
-      chunk.render()
+      chunk.render(layer=RenderLayers['SOLID'])
+    
+    RenderLayers['SOLID'].end()
+
+    RenderLayers['TRANSLUCENT'].begin()
+    for chunk in self.chunks:
+      chunk.render(layer=RenderLayers['TRANSLUCENT'])
+    glDisable(GL_BLEND)
+    
+    RenderLayers['TRANSLUCENT'].end()
 
   def dispose(self):
     for chunk in self.chunks:
@@ -291,10 +346,13 @@ class Game:
     if not glfw.init():
       exit(0)
 
-    self.chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!  "
+    self.chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!:/"
+
+    self.width = 800
+    self.height = 600
 
     glfw.default_window_hints()
-    self.window = glfw.create_window(800, 600, "Voxels", None, None)
+    self.window = glfw.create_window(self.width, self.height, "Voxels", None, None)
     imicon = Image.open("icon.png")
     glfw.set_window_icon(self.window, 1, [imicon])
     glfw.make_context_current(self.window)
@@ -316,8 +374,15 @@ class Game:
     glfw.set_key_callback(self.window, lambda _,key,scancode,action,mods : self.on_key(key, scancode, action, mods))
     glfw.set_cursor_pos_callback(self.window, lambda _,xpos,ypos : self.on_cursor_pos(xpos, ypos))
     glfw.set_mouse_button_callback(self.window, lambda _,button,action,mods : self.on_mouse_button(button, action, mods))
+    glfw.set_framebuffer_size_callback(self.window, lambda _,w,h : self.on_framebuffer_size_changed(w, h))
 
     self.world = World(self)
+
+  def on_framebuffer_size_changed(self, width, height):
+    self.width = width
+    self.height = height
+    glViewport(0, 0, self.width, self.height)
+    self.proj_mat = perspective(1.22172, self.width / self.height, 0.05, 1000.0)
 
   def on_mouse_button(self, button, action, mods):
     pass
@@ -336,8 +401,9 @@ class Game:
     glClearColor(0.0, 0.0, 0.0, 0.0)
     last_time = glfw.get_time()
     frame_counter = 0
-    self.proj_mat = perspective(1.22172, 800.0 / 600.0, 0.05, 1000.0)
+    self.proj_mat = perspective(1.22172, self.width / self.height, 0.05, 1000.0)
     tick_last_time = glfw.get_time()
+    tick_delta = 0
     glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_DISABLED)
 
     while self.running:
@@ -347,7 +413,9 @@ class Game:
       tick_now = glfw.get_time()
       tick_passed_sec = tick_now - tick_last_time
       tick_last_time = tick_now
-      ticks = int(tick_passed_sec * 60 / 1.0)
+      tick_delta += tick_passed_sec * 60 / 1.0
+      ticks = int(tick_delta)
+      tick_delta -= ticks
 
       for _ in range(0, ticks):
         self.tick()
@@ -358,7 +426,7 @@ class Game:
       
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-      self.render()
+      self.render(tick_delta)
       
       glfw.swap_buffers(self.window)
       glfw.poll_events()
@@ -369,14 +437,13 @@ class Game:
       if now - last_time > 1.0:
         last_time = now
         self.current_fps = frame_counter
-        glfw.set_window_title(self.window, f"Voxels {frame_counter} FPS Player({self.player.x},{self.player.y},{self.player.z})")
         frame_counter = 0
 
     self.world.dispose()
     self.texture_manager.dispose()
     glfw.terminate()
 
-  def render(self):
+  def render(self, tick_delta: float):
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     glLoadMatrixf(self.proj_mat)
@@ -390,27 +457,33 @@ class Game:
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_CULL_FACE)
 
-    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("grass.png"))
+    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("grass.png"))  
     self.world.render()
-
+  
     glClear(GL_DEPTH_BUFFER_BIT)
+
+    scaled_width = self.width / 2
+    scaled_height = self.height / 2
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glOrtho(0, 400, 300, 0, 1000.0, 3000.0)
+    glOrtho(0, scaled_width, scaled_height, 0, 1000.0, 3000.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     glTranslatef(0.0, 0.0, -2000.0)
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR)
-    self.draw_texture("gui.png", 200 - 8, 150 - 8, 16, 16, 240, 0, 16, 16, 256, 64)
+    self.draw_texture("gui.png", scaled_width / 2 - 8, scaled_height / 2 - 8, 16, 16, 240, 0, 16, 16, 256, 64)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    self.draw_texture("gui.png", 200 - 91, 300 - 22, 182, 22, 0, 0, 182, 22, 256, 64)
+    self.draw_texture("gui.png", scaled_width / 2 - 91, scaled_height - 22, 182, 22, 0, 0, 182, 22, 256, 64)
     glDisable(GL_BLEND)
 
-    self.draw_text("VOXELS", 1, 1, 0xFFFFFF)
-    self.draw_text(f"{self.current_fps} FPS", 1, 11, 0xFFFFFF)
+    self.draw_text("VOXELS ALPHA", 1, 1, 0xFFFFFF, 0)
+    self.draw_text(f"{self.current_fps} FPS", 1, 11, 0xFFFFFF, 0)
+    self.draw_text(f"{'XYZ: {:.4f} / {:.4f} / {:.4f}'.format(self.player.x, self.player.y, self.player.z)}", 1, 21, 0xFFFFFF, 0)
+    self.draw_text(f"PYTHON {platform.sys.version_info.major}.{platform.sys.version_info.minor}.{platform.sys.version_info.micro}", scaled_width - 1, 1, 0xFFFFFF, 1)
+    self.draw_text(f"DISPLAY: {self.width}X{self.height}", scaled_width - 1, 11, 0xFFFFFF, 1)
 
   def draw_texture(self, texture_name, x: int, y: int, width: int, height: int, u: int, v: int, us: int, vs: int, tw: int, th: int):
     glBindTexture(GL_TEXTURE_2D, self.texture_manager.get(texture_name))
@@ -432,14 +505,15 @@ class Game:
     glVertex3f(x + width, y, 0)
     glEnd()
 
-  def draw_text(self, message: str, x: int, y: int, color: int):
+  def draw_text(self, message: str, x: int, y: int, color: int, align: float):
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("gui.png"))
 
     glBegin(GL_QUADS)
 
-    xx = x
+    xx = x - (len(message) * 8) * align
+
     for char in message:
       if char == ' ':
         xx += 8
