@@ -1,2 +1,6 @@
-for x in range(15, -1, -1):
+def funs(x: float):
     print(x)
+    x = 1010
+    print(x)
+
+funs(10)

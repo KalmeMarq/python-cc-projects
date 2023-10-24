@@ -1,5 +1,11 @@
+from __future__ import annotations
 import math
 import numpy as np
+
+MAX_SIGNED_INT32 = 2147483647
+
+def clamp(value, min_value, max_value):
+  return min_value if value < min_value else max_value if value > max_value else value
 
 def perspective(fov, aspect_ratio, near_plane, far_plane):
   h = math.tan(fov * 0.5)
@@ -23,163 +29,119 @@ def intbound(s, ds):
     s = mod(s, 1);
     return (1 - s) / ds
 
-# public class AABB  {
-# 	private float epsilon = 0.0F;
-# 	public float x0;
-# 	public float y0;
-# 	public float z0;
-# 	public float x1;
-# 	public float y1;
-# 	public float z1;
+class AABB:
+  def __init__(self, x0: float, y0: float, z0: float, x1: float, y1: float, z1: float) -> None:
+    self.x0 = x0
+    self.y0 = y0
+    self.z0 = z0
+    self.x1 = x1
+    self.y1 = y1
+    self.z1 = z1
 
-# 	public AABB(float var1, float var2, float var3, float var4, float var5, float var6) {
-# 		this.x0 = var1;
-# 		this.y0 = var2;
-# 		this.z0 = var3;
-# 		this.x1 = var4;
-# 		this.y1 = var5;
-# 		this.z1 = var6;
-# 	}
+  def __str__(self) -> str:
+    return f"AABB[x0={'{:.2f}'.format(self.x0)},y0={'{:.2f}'.format(self.y0)},z0={'{:.2f}'.format(self.z0)},x1={'{:.2f}'.format(self.x1)},y1={'{:.2f}'.format(self.y1)},z1={'{:.2f}'.format(self.z1)}]"
 
-# 	public AABB expand(float var1, float var2, float var3) {
-# 		float var4 = this.x0;
-# 		float var5 = this.y0;
-# 		float var6 = this.z0;
-# 		float var7 = this.x1;
-# 		float var8 = this.y1;
-# 		float var9 = this.z1;
-# 		if(var1 < 0.0F) {
-# 			var4 += var1;
-# 		}
+  def intersects(self, aabb: AABB):
+    return (aabb.z1 > self.z0 and aabb.z0 < self.z1 if aabb.y1 > self.y0 and aabb.y0 < self.y1 else False) if aabb.x1 > self.x0 and aabb.x0 < self.x1 else False
 
-# 		if(var1 > 0.0F) {
-# 			var7 += var1;
-# 		}
+  def move(self, x, y, z):
+    self.x0 += x
+    self.y0 += y
+    self.z0 += z
+    self.x1 += x
+    self.y1 += y
+    self.z1 += z
 
-# 		if(var2 < 0.0F) {
-# 			var5 += var2;
-# 		}
+  def expand(self, x: float, y: float, z: float):
+    x0 = self.x0
+    y0 = self.y0
+    z0 = self.z0
+    x1 = self.x1
+    y1 = self.y1
+    z1 = self.z1
+      
+    if x < 0.0:
+      x0 += x
 
-# 		if(var2 > 0.0F) {
-# 			var8 += var2;
-# 		}
+    if x > 0.0:
+      x1 += x
 
-# 		if(var3 < 0.0F) {
-# 			var6 += var3;
-# 		}
+    if y < 0.0:
+      y0 += y
 
-# 		if(var3 > 0.0F) {
-# 			var9 += var3;
-# 		}
+    if y > 0.0:
+      y1 += y
 
-# 		return new AABB(var4, var5, var6, var7, var8, var9);
-# 	}
+    if z < 0.0:
+      z0 += z
 
-# 	public AABB grow(float var1, float var2, float var3) {
-# 		float var4 = this.x0 - var1;
-# 		float var5 = this.y0 - var2;
-# 		float var6 = this.z0 - var3;
-# 		var1 += this.x1;
-# 		var2 += this.y1;
-# 		float var7 = this.z1 + var3;
-# 		return new AABB(var4, var5, var6, var1, var2, var7);
-# 	}
+    if z > 0.0:
+      z1 += z
 
-# 	public AABB cloneMove(float var1, float var2, float var3) {
-# 		return new AABB(this.x0 + var3, this.y0 + var2, this.z0 + var3, this.x1 + var1, this.y1 + var2, this.z1 + var3);
-# 	}
+    return AABB(x0, y0, z0, x1, y1, z1)
+  
+  def grow(self, x, y, z):
+    nx0 = self.x0 - x
+    ny0 = self.y0 - y
+    nz0 = self.z0 - z
+    nx1 = self.x1 + x
+    ny1 = self.y1 + y
+    nz1 = self.z1 + z
+    return AABB(nx0, ny0, nz0, nx1, ny1, nz1)
+  
+  def clipXCollide(self, aabb: AABB, xa: float):
+    if aabb.y1 > self.y0 and aabb.y0 < self.y1:
+      if aabb.z1 > self.z0 and aabb.z0 < self.z1:
+        if xa > 0.0 and aabb.x1 <= self.x0:
+          nxa = self.x0 - aabb.x1
+          if nxa < xa:
+            xa = nxa
 
-# 	public float clipXCollide(AABB var1, float var2) {
-# 		if(var1.y1 > this.y0 && var1.y0 < this.y1) {
-# 			if(var1.z1 > this.z0 && var1.z0 < this.z1) {
-# 				float var3;
-# 				if(var2 > 0.0F && var1.x1 <= this.x0) {
-# 					var3 = this.x0 - var1.x1 - this.epsilon;
-# 					if(var3 < var2) {
-# 						var2 = var3;
-# 					}
-# 				}
+        if xa < 0.0 and aabb.x0 >= self.x1:
+          nxa = self.x1 - aabb.x0
+          if nxa > xa:
+            xa = nxa
 
-# 				if(var2 < 0.0F && var1.x0 >= this.x1) {
-# 					var3 = this.x1 - var1.x0 + this.epsilon;
-# 					if(var3 > var2) {
-# 						var2 = var3;
-# 					}
-# 				}
+        return xa
+      else:
+        return xa
+    else:
+      return xa
+    
+  def clipYCollide(self, aabb: AABB, ya: float):
+    if aabb.x1 > self.x0 and aabb.x0 < self.x1:
+      if aabb.z1 > self.z0 and aabb.z0 < self.z1:
+        if ya > 0.0 and aabb.y1 <= self.y0:
+          nya = self.y0 - aabb.y1
+          if nya < ya:
+            ya = nya
 
-# 				return var2;
-# 			} else {
-# 				return var2;
-# 			}
-# 		} else {
-# 			return var2;
-# 		}
-# 	}
+        if ya < 0.0 and aabb.y0 >= self.y1:
+          nya = self.y1 - aabb.y0
+          if nya > ya:
+            ya = nya
 
-# 	public float clipYCollide(AABB var1, float var2) {
-# 		if(var1.x1 > this.x0 && var1.x0 < this.x1) {
-# 			if(var1.z1 > this.z0 && var1.z0 < this.z1) {
-# 				float var3;
-# 				if(var2 > 0.0F && var1.y1 <= this.y0) {
-# 					var3 = this.y0 - var1.y1 - this.epsilon;
-# 					if(var3 < var2) {
-# 						var2 = var3;
-# 					}
-# 				}
+        return ya
+      else:
+        return ya
+    else:
+      return ya
+    
+  def clipZCollide(self, aabb: AABB, za: float):
+    if aabb.x1 > self.x0 and aabb.x0 < self.x1:
+      if aabb.y1 > self.y0 and aabb.y0 < self.y1:
+        if za > 0.0 and aabb.z1 <= self.z0:
+          nza = self.z0 - aabb.z1
+          if nza < za:
+            za = nza
 
-# 				if(var2 < 0.0F && var1.y0 >= this.y1) {
-# 					var3 = this.y1 - var1.y0 + this.epsilon;
-# 					if(var3 > var2) {
-# 						var2 = var3;
-# 					}
-# 				}
+        if za < 0.0 and aabb.z0 >= self.z1:
+          nza = self.z1 - aabb.z0
+          if nza > za:
+            za = nza
 
-# 				return var2;
-# 			} else {
-# 				return var2;
-# 			}
-# 		} else {
-# 			return var2;
-# 		}
-# 	}
-
-# 	public float clipZCollide(AABB var1, float var2) {
-# 		if(var1.x1 > this.x0 && var1.x0 < this.x1) {
-# 			if(var1.y1 > this.y0 && var1.y0 < this.y1) {
-# 				float var3;
-# 				if(var2 > 0.0F && var1.z1 <= this.z0) {
-# 					var3 = this.z0 - var1.z1 - this.epsilon;
-# 					if(var3 < var2) {
-# 						var2 = var3;
-# 					}
-# 				}
-
-# 				if(var2 < 0.0F && var1.z0 >= this.z1) {
-# 					var3 = this.z1 - var1.z0 + this.epsilon;
-# 					if(var3 > var2) {
-# 						var2 = var3;
-# 					}
-# 				}
-
-# 				return var2;
-# 			} else {
-# 				return var2;
-# 			}
-# 		} else {
-# 			return var2;
-# 		}
-# 	}
-
-# 	public boolean intersects(AABB var1) {
-# 		return var1.x1 > this.x0 && var1.x0 < this.x1 ? (var1.y1 > this.y0 && var1.y0 < this.y1 ? var1.z1 > this.z0 && var1.z0 < this.z1 : false) : false;
-# 	}
-
-# 	public void move(float var1, float var2, float var3) {
-# 		this.x0 += var1;
-# 		this.y0 += var2;
-# 		this.z0 += var3;
-# 		this.x1 += var1;
-# 		this.y1 += var2;
-# 		this.z1 += var3;
-# 	}
-# }
+        return za
+      else:
+        return za
+    else:
+      return za
