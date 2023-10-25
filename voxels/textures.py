@@ -11,16 +11,17 @@ class Texture:
     self.__height = 0
 
   @property
-  def id(self) -> GLuint:
-    return self.__id
-
-  @property
   def width(self) -> int:
     return self.__width
   
   @property
   def height(self) -> int:
     return self.__height
+  
+  def bind(self):
+    if self.__id == -1:
+      self.__id = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, self.__id)
 
   def upload_to_gpu(self):
     image = Image.open("res/" + self.__path).convert("RGBA")
@@ -29,8 +30,7 @@ class Texture:
 
     image_data = np.frombuffer(image.tobytes(), np.uint8)
 
-    self.__id = glGenTextures(1)
-    glBindTexture(GL_TEXTURE_2D, self.__id)
+    self.bind()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
@@ -40,6 +40,7 @@ class Texture:
 
   def dispose(self):
     glDeleteTextures([self.__id])
+    self.__id = -1
 
 class TextureManager:
   def __init__(self):
@@ -49,6 +50,10 @@ class TextureManager:
     texture = Texture(path)
     texture.upload_to_gpu()
     self.__textures[path] = texture
+
+  def reload_textures(self):
+    for texture in self.__textures.values():
+      texture.upload_to_gpu()
 
   def get(self, path: str) -> Texture:
     return self.__textures[path]

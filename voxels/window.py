@@ -10,6 +10,7 @@ class GameWindow:
     self.__scroll_callback: Callable[[float, float], None] | None = None
     self.__size_changed_callback: Callable[[], None] | None = None
     self.__scale_factor = 2
+    self.__vsync = True
 
   def init(self, title: str) -> bool:
     if not glfw.init():
@@ -22,6 +23,11 @@ class GameWindow:
     self.set_icon("icon.png")
 
     glfw.make_context_current(self.__handle)
+
+    prim_mon = glfw.get_primary_monitor()
+    vidmode = glfw.get_video_mode(prim_mon)
+    glfw.set_window_pos(self.__handle, int(vidmode.size.width / 2 - self.width / 2), int(vidmode.size.height / 2 - self.height / 2))
+
     glfw.swap_interval(1)
     glfw.show_window(self.__handle)
 
@@ -49,6 +55,15 @@ class GameWindow:
 
     if self.__size_changed_callback != None:
       self.__size_changed_callback()
+
+  @property
+  def vsync(self):
+    return self.__vsync
+  
+  @vsync.setter
+  def vsync(self, vsync):
+    self.__vsync = vsync
+    glfw.swap_interval(1 if vsync else 0)
 
   @property
   def handle(self):
