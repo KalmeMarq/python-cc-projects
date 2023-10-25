@@ -11,6 +11,8 @@ from textures import TextureManager
 from tiles import TILE_TYPES
 from render_layers import RenderLayer, RenderLayers
 from window import GameWindow
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 DEBUG_PRINTS = False
@@ -587,7 +589,7 @@ class World:
       glTranslatef(16, 69, 16)
       glRotatef(90, 1, 0, 0)
       glRotatef(180, 0, 1, 0)
-      self.game.draw_text("BRUH", 0, 0, 0xFFFFFF, 0, shadow=False)
+      self.game.font.draw_text("BRUH", 0, 0, 0xFFFFFF, 0, shadow=False)
       glPopMatrix()
       glEnable(GL_CULL_FACE)
       self.game.texture_manager.get("grass.png").bind()
@@ -656,10 +658,16 @@ class Menu:
     for button in self.buttons:
       hovered = mouse_pos[0] > button[0][0] and mouse_pos[0] <= button[0][0] + button[1][0] and mouse_pos[1] > button[0][1] and mouse_pos[1] <= button[0][1] + button[1][1]
       game.draw_texture_nineslice("gui.png", button[0], button[1], (20 if hovered else 0, 22), (20, 20), (4, 4, 4, 4), 256, 64)
-      game.draw_text(button[2], button[0][0] + button[1][0] / 2, button[0][1] + 6, 0xFFFFFF, 0.5)
+      game.font.draw_text(button[2], button[0][0] + button[1][0] / 2, button[0][1] + 6, 0xFFFFFF, 0.5)
 
 class MainMenu(Menu):
+  SPLASHES = ["BRESENHAM!", "FINITE VOXELS", "DON'T LOOK UP!"]
+
+  def __init__(self, game: Game) -> None:
+    super().__init__(game)
+
   def init_gui(self):
+    self.splash = random.choice(MainMenu.SPLASHES)
     self.add_button((self.game.window.scaled_width() / 2 - 100, self.game.window.scaled_height() / 2 - 24), (200, 20), "PLAY GAME", self.__play)
     self.add_button((self.game.window.scaled_width() / 2 - 100, self.game.window.scaled_height() / 2), (200, 20), "SETTINGS", self.__settings)
     self.add_button((self.game.window.scaled_width() / 2 - 100, self.game.window.scaled_height() / 2 + 24), (200, 20), "QUIT", self.game.shutdown)
@@ -673,8 +681,8 @@ class MainMenu(Menu):
   def render(self, game: Game, mouse_pos: tuple[int, int]):
     self.render_dirt_bg()
     super().render(game, mouse_pos)
-    game.draw_text("VOXELS", 1, 1, 0xFFFFFF, 0)
-    game.draw_text("THIS GAME IS BAD!", game.window.scaled_width() / 2, 20, 0xFFFF00, 0.5)
+    game.font.draw_text("VOXELS", 1, 1, 0xFFFFFF, 0)
+    game.font.draw_text(self.splash, game.window.scaled_width() / 2, 20, 0xFFFF00, 0.5)
 
 class LoadingTerrainMenu(Menu):
   def __init__(self, game: Game) -> None:
@@ -684,7 +692,7 @@ class LoadingTerrainMenu(Menu):
   def render(self, game: Game, mouse_pos: tuple[int, int]):
     self.render_dirt_bg()
     super().render(game, mouse_pos)
-    game.draw_text("GENERATING TERRAIN...", self.game.window.scaled_width() / 2, 40, 0xFFFFFF, 0.5)
+    game.font.draw_text("GENERATING TERRAIN...", self.game.window.scaled_width() / 2, 40, 0xFFFFFF, 0.5)
 
     if self.started:
       self.game.world = World(self.game)
@@ -743,7 +751,7 @@ class SettingsMenu(Menu):
       self.render_dirt_bg()
     else:
       game.draw_rect((0, 0), (game.window.scaled_width(), self.game.window.scaled_height()), 0x90000000)
-    game.draw_text("SETTINGS", game.window.scaled_width() / 2, 20, 0xFFFFFF, 0.5)
+    game.font.draw_text("SETTINGS", game.window.scaled_width() / 2, 20, 0xFFFFFF, 0.5)
     super().render(game, mouse_pos)
 
 class PauseMenu(Menu):
@@ -767,22 +775,64 @@ class PauseMenu(Menu):
 
   def render(self, game: Game, mouse_pos: tuple[int, int]):
     game.draw_rect((0, 0), (game.window.scaled_width(), self.game.window.scaled_height()), 0x90000000)
-    game.draw_text("GAME MENU", game.window.scaled_width() / 2, 40, 0xFFFFFF, 0.5)
+    game.font.draw_text("GAME MENU", game.window.scaled_width() / 2, 40, 0xFFFFFF, 0.5)
     super().render(game, mouse_pos)
+
+class Font:
+  CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!:/-'"
+
+  def __init__(self, game: Game):
+    self.game = game
+
+  def draw_text(self, message: str, x: int, y: int, color: int, align: float, shadow=True):
+    if shadow:
+      self.__draw_text(message, x + 1, y + 1, 0x000000, align)
+    self.__draw_text(message, x, y, color, align)
+
+  def __draw_text(self, message: str, x: int, y: int, color: int, align: float):
+    glColor4f((color >> 16 & 0xFF) / 255.0, (color >> 8 & 0xFF) / 255.0, (color & 0xFF) / 255.0, 1.0)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    self.game.texture_manager.get("gui.png").bind()
+
+    glBegin(GL_QUADS)
+
+    xx = x - (len(message) * 8) * align
+
+    for char in message:
+      if char == ' ':
+        xx += 8
+        continue
+      
+      idx = Font.CHARS.find(char)
+      u = (idx % 21) * 8
+      v = 48 + (idx // 21) * 8
+
+      u0 = u / 256
+      v0 = v / 64
+      u1 = (u + 8) / 256
+      v1 = (v + 8) / 64
+
+      glTexCoord2f(u0, v0)
+      glVertex3f(xx, y, 0)
+      glTexCoord2f(u0, v1)
+      glVertex3f(xx, y + 8, 0)
+      glTexCoord2f(u1, v1)
+      glVertex3f(xx + 8, y + 8, 0)
+      glTexCoord2f(u1, v0)
+      glVertex3f(xx + 8, y, 0)
+
+      xx += 8
+
+    glEnd()
+
+    glDisable(GL_BLEND)
 
 class Game:
   def __init__(self):
-    self.chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!:/- "
     self.show_debug = False
     self.window = GameWindow(700, 450)
-    self.window.init("Voxels")
-
     self.texture_manager = TextureManager()
-    self.texture_manager.load('grass.png')
-    self.texture_manager.load('gui.png')
-    self.texture_manager.load('bg.png')
-    self.texture_manager.load('prof.png')
-    self.texture_manager.load('not_bedrock.png')
     self.current_fps = 0
     self.mouse = {
       'x': 0,
@@ -792,21 +842,21 @@ class Game:
     }
     self.running = True
     self.player: Player | None = None 
-    glfw.set_key_callback(self.window.handle, lambda _,key,scancode,action,mods : self.on_key(key, scancode, action, mods))
-    glfw.set_cursor_pos_callback(self.window.handle, lambda _,xpos,ypos : self.on_cursor_pos(xpos, ypos))
-    self.menu = MainMenu(self)
+    self.menu: Menu | None = None
     self.window.mouse_button_func(self.on_mouse_button)
     self.window.scroll_func(self.on_scroll)
     self.window.size_changed_func(self.on_framebuffer_size_changed)
+    self.window.cursor_pos_func(self.on_cursor_pos)
+    self.window.key_func(self.on_key)
     self.world: World | None = None
     self.hit_result: HitResult | None = None
+    self.font = Font(self)
     self.selected_tile = 1
     self.fog_distance = 1
     self.show_block_preview = True
     self.sound_enabled = True
     self.chunk_updates = 0
     self.workaround_hit_face = 0
-    self.load_settings()
     self.click_sound = pygame.mixer.Sound("click.mp3")
     self.block_sound = pygame.mixer.Sound("block.mp3")
     self.block_sound.set_volume(0.7)
@@ -886,7 +936,7 @@ class Game:
     self.mouse['x'] = xpos
     self.mouse['y'] = ypos
 
-  def on_key(self, key, scancode, action, mods):
+  def on_key(self, key, scancode, action):
     if action == glfw.PRESS and key == glfw.KEY_ESCAPE and self.menu == None:
       self.menu = PauseMenu(self)
       self.ungrab_mouse()
@@ -922,6 +972,15 @@ class Game:
     return [self.player.x, self.player.y, self.player.z]
 
   def run(self):
+    self.window.init("Voxels")
+    self.load_settings()
+    self.texture_manager.load('grass.png')
+    self.texture_manager.load('gui.png')
+    self.texture_manager.load('bg.png')
+    self.texture_manager.load('prof.png')
+    self.texture_manager.load('not_bedrock.png')
+    self.menu = MainMenu(self)
+
     glClearColor(0.239, 0.686, 0.807, 1.0)
     last_time = glfw.get_time()
     frame_counter = 0
@@ -1103,22 +1162,22 @@ class Game:
     glDisable(GL_BLEND)
 
     if self.world != None:
-      self.draw_text("VOXELS", 1, 1, 0xFFFFFF, 0)
+      self.font.draw_text("VOXELS", 1, 1, 0xFFFFFF, 0)
 
       if self.show_debug:
-        self.draw_text(f"{self.current_fps} FPS", 1, 11, 0xFFFFFF, 0)
-        self.draw_text(f"{'X: {:.4f}'.format(self.player.x)}", 1, 21, 0xFFFFFF, 0)
-        self.draw_text(f"{'Y: {:.4f}'.format(self.player.y)}", 1, 31, 0xFFFFFF, 0)
-        self.draw_text(f"{'Z: {:.4f}'.format(self.player.z)}", 1, 41, 0xFFFFFF, 0)
-        self.draw_text(f"SELECTED TILE: {self.selected_tile}", 1, 51, 0xFFFFFF, 0)
-        self.draw_text("PRESS F3 TO SHOW/HIDE DEBUG", 1, 71, 0xFFFFFF, 0)
-        self.draw_text("PRESS 1-9 TO SELECT BLOCKS", 1, 81, 0xFFFFFF, 0)
-        self.draw_text("PRESS F7 TO RELOAD TEXTURES", 1, 91, 0xFFFFFF, 0)
-        self.draw_text(f"PYTHON {platform.sys.version_info.major}.{platform.sys.version_info.minor}.{platform.sys.version_info.micro}", self.window.scaled_width() - 1, 1, 0xFFFFFF, 1)
-        self.draw_text(f"DISPLAY: {self.window.width}X{self.window.height}", self.window.scaled_width() - 1, 21, 0xFFFFFF, 1)
+        self.font.draw_text(f"{self.current_fps} FPS", 1, 11, 0xFFFFFF, 0)
+        self.font.draw_text(f"{'X: {:.4f}'.format(self.player.x)}", 1, 21, 0xFFFFFF, 0)
+        self.font.draw_text(f"{'Y: {:.4f}'.format(self.player.y)}", 1, 31, 0xFFFFFF, 0)
+        self.font.draw_text(f"{'Z: {:.4f}'.format(self.player.z)}", 1, 41, 0xFFFFFF, 0)
+        self.font.draw_text(f"SELECTED TILE: {self.selected_tile}", 1, 51, 0xFFFFFF, 0)
+        self.font.draw_text("PRESS F3 TO SHOW/HIDE DEBUG", 1, 71, 0xFFFFFF, 0)
+        self.font.draw_text("PRESS 1-9 TO SELECT BLOCKS", 1, 81, 0xFFFFFF, 0)
+        self.font.draw_text("PRESS F7 TO RELOAD TEXTURES", 1, 91, 0xFFFFFF, 0)
+        self.font.draw_text(f"PYTHON {platform.sys.version_info.major}.{platform.sys.version_info.minor}.{platform.sys.version_info.micro}", self.window.scaled_width() - 1, 1, 0xFFFFFF, 1)
+        self.font.draw_text(f"DISPLAY: {self.window.width}X{self.window.height}", self.window.scaled_width() - 1, 21, 0xFFFFFF, 1)
       else:
-        self.draw_text("PRESS F3 TO SHOW DEBUG", 1, 11, 0xFFFFFF, 0)
-        self.draw_text("PRESS 1-9 TO SELECT BLOCKS", 1, 21, 0xFFFFFF, 0)
+        self.font.draw_text("PRESS F3 TO SHOW DEBUG", 1, 11, 0xFFFFFF, 0)
+        self.font.draw_text("PRESS 1-9 TO SELECT BLOCKS", 1, 21, 0xFFFFFF, 0)
 
     if self.menu != None:
       self.menu.render(self, (self.mouse['x'] / self.window.scale_factor, self.mouse['y'] / self.window.scale_factor))
@@ -1184,50 +1243,6 @@ class Game:
     glBegin(GL_QUADS)
     self.__draw_texture_quad(x, y, width, height, u, v, us, vs, tw, th)
     glEnd()
-
-  def draw_text(self, message: str, x: int, y: int, color: int, align: float, shadow=True):
-    if shadow:
-      self.__draw_text(message, x + 1, y + 1, 0x000000, align)
-    self.__draw_text(message, x, y, color, align)
-
-  def __draw_text(self, message: str, x: int, y: int, color: int, align: float):
-    glColor4f((color >> 16 & 0xFF) / 255.0, (color >> 8 & 0xFF) / 255.0, (color & 0xFF) / 255.0, 1.0)
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    self.texture_manager.get("gui.png").bind()
-
-    glBegin(GL_QUADS)
-
-    xx = x - (len(message) * 8) * align
-
-    for char in message:
-      if char == ' ':
-        xx += 8
-        continue
-      
-      idx = self.chars.find(char)
-      u = (idx % 21) * 8
-      v = 48 + (idx // 21) * 8
-
-      u0 = u / 256
-      v0 = v / 64
-      u1 = (u + 8) / 256
-      v1 = (v + 8) / 64
-
-      glTexCoord2f(u0, v0)
-      glVertex3f(xx, y, 0)
-      glTexCoord2f(u0, v1)
-      glVertex3f(xx, y + 8, 0)
-      glTexCoord2f(u1, v1)
-      glVertex3f(xx + 8, y + 8, 0)
-      glTexCoord2f(u1, v0)
-      glVertex3f(xx + 8, y, 0)
-
-      xx += 8
-
-    glEnd()
-
-    glDisable(GL_BLEND)
 
   def tick(self):
     if self.world != None:

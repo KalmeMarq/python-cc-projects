@@ -7,6 +7,8 @@ class GameWindow:
     self.__width = width
     self.__height = height
     self.__mouse_button_callback: Callable[[int, int], None] | None = None
+    self.__cursor_pos_callback: Callable[[float, float], None] | None = None
+    self.__key_callback: Callable[[int, int, int], None] | None = None
     self.__scroll_callback: Callable[[float, float], None] | None = None
     self.__size_changed_callback: Callable[[], None] | None = None
     self.__scale_factor = 2
@@ -33,10 +35,18 @@ class GameWindow:
 
     glfw.set_framebuffer_size_callback(self.__handle, lambda _, w, h: self.__on_framebuffer_size_changed(w, h))
     glfw.set_mouse_button_callback(self.__handle, lambda _, button, action, mods : self.__mouse_button_callback(button, action) if self.__mouse_button_callback != None else None)
+    glfw.set_cursor_pos_callback(self.__handle, lambda _, xpos, ypos : self.__cursor_pos_callback(xpos, ypos) if self.__cursor_pos_callback != None else None)
+    glfw.set_key_callback(self.__handle, lambda _, key, scancode, action, mods : self.__key_callback(key, scancode, action) if self.__key_callback != None else None)
     glfw.set_scroll_callback(self.__handle, lambda _, x_offset, y_offset : self.__scroll_callback(x_offset, y_offset) if self.__scroll_callback != None else None)
 
   def mouse_button_func(self, callback: Callable[[int, int], None]):
     self.__mouse_button_callback = callback
+  
+  def cursor_pos_func(self, callback: Callable[[float, float], None]):
+    self.__cursor_pos_callback = callback
+  
+  def key_func(self, callback: Callable[[int, int, int], None]):
+    self.__key_callback = callback
   
   def scroll_func(self, callback: Callable[[float, float], None]):
     self.__scroll_callback = callback
