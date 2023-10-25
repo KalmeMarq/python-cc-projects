@@ -173,7 +173,7 @@ class HitResult:
 
 # Basic unit block based raycast
 # https://gamedev.stackexchange.com/questions/47362/cast-ray-to-select-block-in-voxel-game
-def bresenham(world, startPoint, endPoint):
+def bresenham(world, startPoint, endPoint, get_tile_type):
   startPoint = [int(startPoint[0]),int(startPoint[1]),int(startPoint[2])]
 
   endPoint = [int(endPoint[0]),int(endPoint[1]),int(endPoint[2])]
@@ -211,7 +211,7 @@ def bresenham(world, startPoint, endPoint):
         point[0], point[1] = point[1], point[0]
 
     tile_id = world.get_tile(point[0], point[1], point[2])
-    if tile_id != 0 and tile_id != 7:
+    if tile_id != 0 and get_tile_type(tile_id).is_collidable:
       return HitResult(point[0], point[1], point[2], tile_id, 0)
 
     errorXY -= delta[1]

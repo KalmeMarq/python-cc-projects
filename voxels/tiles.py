@@ -4,7 +4,7 @@ from typing import Dict
 TILE_TYPES: Dict[int, TileType] = {}
 
 class TileType:
-  def __init__(self, tile_id: int, down_txr: int, up_txr: int, north_txr: int, south_txr: int, west_txr: int, east_txr: int, is_tickable = False, allows_light_through = False) -> None:
+  def __init__(self, tile_id: int, down_txr: int, up_txr: int, north_txr: int, south_txr: int, west_txr: int, east_txr: int, is_tickable = False, allows_light_through = False, is_collidable = True) -> None:
     self.tile_id = tile_id
     self.down_txr = down_txr
     self.up_txr = up_txr
@@ -14,6 +14,7 @@ class TileType:
     self.east_txr = east_txr
     self.is_tickable = is_tickable
     self.allows_light_through = allows_light_through
+    self.is_collidable = is_collidable
   
   def render_in_gui(self, vertex_drawer):
     tile = self.tile_id
@@ -134,6 +135,6 @@ TILE_TYPES[3] = TileType(3, 4, 4, 4, 4, 4, 4) # STONE
 TILE_TYPES[4] = TileType(4, 2, 2, 5, 5, 5, 5) # LOG
 TILE_TYPES[5] = TileType(5, 6, 6, 6, 6, 6, 6) # PLANKS
 TILE_TYPES[6] = TileType(6, 7, 7, 7, 7, 7, 7) # SAND
-TILE_TYPES[7] = TileType(7, 8, 8, 8, 8, 8, 8, allows_light_through=True, is_tickable=True) # WATER
+TILE_TYPES[7] = TileType(7, 8, 8, 8, 8, 8, 8, allows_light_through=True, is_tickable=True, is_collidable=False) # WATER
 TILE_TYPES[8] = TileType(8, 11, 11, 11, 11, 11, 11) # LEAVES
-TILE_TYPES[9] = TileType(10, 9, 9, 9, 9, 9, 9) # FLOWER
+TILE_TYPES[9] = TileType(10, 10, 10, 10, 10, 10, 10) # NOT BEDROCK
