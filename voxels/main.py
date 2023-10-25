@@ -1,41 +1,18 @@
 from __future__ import annotations
 import glfw
-from typing import Dict
 from OpenGL.GL import *
-import PIL.Image as Image
+from OpenGL.GLU import *
 import math
 import utils
-from utils import AABB
-import numpy as np
+from utils import AABB, HitResult, bresenham, VertexDrawer
 import random
 import time
+from textures import TextureManager
+from tiles import TILE_TYPES
+from render_layers import RenderLayer, RenderLayers
+from window import GameWindow
 
 DEBUG_PRINTS = False
-
-class TextureManager:
-  def __init__(self):
-    self.textures: Dict[str, np.uintc] = {}
-
-  def load(self, path: str) -> None:
-    im = Image.open("res/" + path);
-    imdata = np.frombuffer(im.convert("RGBA").tobytes(), np.uint8)
-
-    txr_id = glGenTextures(1)
-    glBindTexture(GL_TEXTURE_2D, txr_id)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, im.width, im.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, imdata)
-    glBindTexture(GL_TEXTURE_2D, 0)
-    self.textures[path] = txr_id
-
-  def get(self, path: str) -> np.uintc:
-    return self.textures[path]
-    
-  def dispose(self) -> None:
-    for txr_id in self.textures.values():
-      glDeleteTextures([txr_id])
 
 # O código de colisão não foi totalmente feito por mim
 # Obtiu por pesquisa e basiado no Minecraft
@@ -74,22 +51,22 @@ class Player:
     xa = 0.0
     za = 0.0
 
-    if glfw.get_key(self.world.game.window, glfw.KEY_R) != glfw.RELEASE:
+    if glfw.get_key(self.world.game.window.handle, glfw.KEY_R) != glfw.RELEASE:
       self.reset_pos()
 
-    if glfw.get_key(self.world.game.window, glfw.KEY_W) != glfw.RELEASE:
+    if glfw.get_key(self.world.game.window.handle, glfw.KEY_W) != glfw.RELEASE:
       za -= 1
     
-    if glfw.get_key(self.world.game.window, glfw.KEY_S) != glfw.RELEASE:
+    if glfw.get_key(self.world.game.window.handle, glfw.KEY_S) != glfw.RELEASE:
       za += 1
 
-    if glfw.get_key(self.world.game.window, glfw.KEY_A) != glfw.RELEASE:
+    if glfw.get_key(self.world.game.window.handle, glfw.KEY_A) != glfw.RELEASE:
       xa -= 1
     
-    if glfw.get_key(self.world.game.window, glfw.KEY_D) != glfw.RELEASE:
+    if glfw.get_key(self.world.game.window.handle, glfw.KEY_D) != glfw.RELEASE:
       xa += 1
 
-    if glfw.get_key(self.world.game.window, glfw.KEY_SPACE) != glfw.RELEASE and self.on_ground:
+    if glfw.get_key(self.world.game.window.handle, glfw.KEY_SPACE) != glfw.RELEASE and self.on_ground:
       self.yd = 0.12
 
     camera_pos = [self.x, self.bounding_box.y0, self.z]
@@ -170,221 +147,9 @@ class Player:
       self.rot_x = -90.0
 
     if self.rot_x > 90.0:
-      self.rot_x = 90.
-
-TILE_TYPES: Dict[int, TileType] = {}
-
-class TileType:
-  def __init__(self, tile_id: int, down_txr: int, up_txr: int, north_txr: int, south_txr: int, west_txr: int, east_txr: int, is_tickable = False) -> None:
-    self.tile_id = tile_id
-    self.down_txr = down_txr
-    self.up_txr = up_txr
-    self.north_txr = north_txr
-    self.south_txr = south_txr
-    self.west_txr = west_txr
-    self.east_txr = east_txr
-    self.is_tickable = False 
-
-  def render_in_gui(self, vertex_drawer: VertexDrawer):
-    tile = self.tile_id
-    x0 = 0.0
-    y0 = 0.0
-    z0 = 0.0
-    x1 = 1.0
-    y1 = 1.0
-    z1 = 1.0
-
-    if tile == 7:
-      y1 -= 0.1
-
-    u = (self.down_txr % 3) * 16
-    v = self.down_txr // 3 * 16
-
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
-
-    vertex_drawer.color(0.6, 0.6, 0.6, 1.0)
-    vertex_drawer.vertex_uv(x0, y0, z1, u0, v1)
-    vertex_drawer.vertex_uv(x0, y0, z0, u0, v0)
-    vertex_drawer.vertex_uv(x1, y0, z0, u1, v0)
-    vertex_drawer.vertex_uv(x1, y0, z1, u1, v1)
-
-    u = (self.up_txr % 3) * 16
-    v = self.up_txr // 3 * 16
-
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
-
-    vertex_drawer.color(1.0, 1.0, 1.0, 1.0)
-    vertex_drawer.vertex_uv(x1, y1, z1, u1, v1)
-    vertex_drawer.vertex_uv(x1, y1, z0, u1, v0)
-    vertex_drawer.vertex_uv(x0, y1, z0, u0, v0)
-    vertex_drawer.vertex_uv(x0, y1, z1, u0, v1)
-
-    u = (self.north_txr % 3) * 16
-    v = self.north_txr // 3 * 16
-
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
-    
-    vertex_drawer.color(0.6, 0.6, 0.6, 1.0)
-    vertex_drawer.vertex_uv(x0, y1, z0, u1, v0)
-    vertex_drawer.vertex_uv(x1, y1, z0, u0, v0)
-    vertex_drawer.vertex_uv(x1, y0, z0, u0, v1)
-    vertex_drawer.vertex_uv(x0, y0, z0, u1, v1)
-
-    u = (self.south_txr % 3) * 16
-    v = self.south_txr // 3 * 16
-
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
-
-    vertex_drawer.color(0.6, 0.6, 0.6, 1.0)
-    vertex_drawer.vertex_uv(x0, y1, z1, u0, v0)
-    vertex_drawer.vertex_uv(x0, y0, z1, u0, v1)
-    vertex_drawer.vertex_uv(x1, y0, z1, u1, v1)
-    vertex_drawer.vertex_uv(x1, y1, z1, u1, v0)
-
-    u = (self.west_txr % 3) * 16
-    v = self.west_txr // 3 * 16
-
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
-
-    vertex_drawer.color(0.8, 0.8, 0.8, 1.0)
-    vertex_drawer.vertex_uv(x0, y1, z1, u1, v0)
-    vertex_drawer.vertex_uv(x0, y1, z0, u0, v0)
-    vertex_drawer.vertex_uv(x0, y0, z0, u0, v1)
-    vertex_drawer.vertex_uv(x0, y0, z1, u1, v1)
-
-    u = (self.east_txr % 3) * 16
-    v = self.east_txr // 3 * 16
-
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
-
-    vertex_drawer.color(0.8, 0.8, 0.8, 1.0)
-    vertex_drawer.vertex_uv(x1, y0, z1, u0, v1)
-    vertex_drawer.vertex_uv(x1, y0, z0, u1, v1)
-    vertex_drawer.vertex_uv(x1, y1, z0, u1, v0)
-    vertex_drawer.vertex_uv(x1, y1, z1, u0, v0)
-
-  def random_tick(self, world: World, x, y, z, tile_id):
-    if tile_id == 7:
-      if world.get_tile(x - 1, y, z) == 0:
-        world.set_tile(x - 1, y, z, 7)
-
-      if world.get_tile(x + 1, y, z) == 0:
-        world.set_tile(x + 1, y, z, 7)
-
-      if world.get_tile(x, y, z - 1) == 0:
-        world.set_tile(x, y, z - 1, 7)
-
-      if world.get_tile(x, y, z + 1) == 0:
-        world.set_tile(x, y, z + 1, 7)
-
-      if world.get_tile(x, y - 1, z) == 0:
-        world.set_tile(x, y - 1, z, 7)
-
-TILE_TYPES[1] = TileType(1, 1, 3, 0, 0, 0, 0) # GRASS BLOCK
-TILE_TYPES[2] = TileType(2, 1, 1, 1, 1, 1, 1) # DIRT
-TILE_TYPES[3] = TileType(3, 4, 4, 4, 4, 4, 4) # STONE
-TILE_TYPES[4] = TileType(4, 2, 2, 5, 5, 5, 5) # LOG
-TILE_TYPES[5] = TileType(5, 6, 6, 6, 6, 6, 6) # PLANKS
-TILE_TYPES[6] = TileType(6, 7, 7, 7, 7, 7, 7) # SAND
-TILE_TYPES[7] = TileType(7, 8, 8, 8, 8, 8, 8) # WATER
-TILE_TYPES[8] = TileType(8, 11, 11, 11, 11, 11, 11) # LEAVES
-TILE_TYPES[9] = TileType(10, 9, 9, 9, 9, 9, 9) # FLOWER
+      self.rot_x = 90.0
 
 CHUNK_HEIGHT = 64
-
-class RenderLayer:
-  def __init__(self, index: int, begin_callback, end_callback) -> None:
-    self.__value = index
-    self.__begin_callback = begin_callback
-    self.__end_callback = end_callback
-
-  def begin(self):
-    self.__begin_callback()
-
-  def end(self):
-    self.__end_callback()
-
-  @property
-  def value(self):
-    return self.__value
-
-  def begin_solid_phase():
-    glDisable(GL_BLEND)
-
-  def end_solid_phase():
-    pass
-
-  def begin_translucent_phase():
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-  def end_translucent_phase():
-    glDisable(GL_BLEND)
-
-  def __eq__(self, __value: object) -> bool:
-    return isinstance(__value, RenderLayer) and __value.value == self.value
-
-RenderLayers = {
-  'SOLID': RenderLayer(0, RenderLayer.begin_solid_phase, RenderLayer.end_solid_phase),
-  'TRANSLUCENT': RenderLayer(1, RenderLayer.begin_translucent_phase, RenderLayer.end_translucent_phase)
-}
-
-class VertexDrawer:
-  def __init__(self) -> None:
-    self.__vertices = 0
-    self.__glType = 0
-
-  def begin(self, glType):
-    self.__glType = glType
-
-  def flush(self, print_vertices = False):
-    if self.__vertices > 0:
-      if print_vertices:
-        print(self.__vertices)
-      glEnd()
-    self.__vertices = 0
-
-  def vertex(self, x, y, z):
-    if self.__vertices == 0:
-      glBegin(self.__glType)
-
-    glVertex3f(x, y, z)
-    self.__vertices += 1
-
-  def vertex_uv(self, x, y, z, u, v):
-    self.texture(u, v)
-    self.vertex(x, y, z)
-
-  def vertex_uv_color(self, x, y, z, u, v, r, g, b, a):
-    self.color(r, g, b, a)
-    self.texture(u, v)
-    self.vertex(x, y, z)
-
-  def color(self, r: float, g: float, b: float, a: float):
-    glColor4f(r, g, b, a)
-    return self
-
-  def texture(self, u: float, v: float):
-    glTexCoord2f(u, v)
-    return self
 
 class Chunk:
   def __init__(self, world: World, x: int, z: int):
@@ -403,7 +168,7 @@ class Chunk:
       for z in range(z0, z1):
         for y in range(CHUNK_HEIGHT - 1, -1, -1):
           tile = self.get_tile(x, y, z)
-          if tile != 0:
+          if tile != 0 and not TILE_TYPES[tile].allows_light_through:
             self.light_heightmap[(z * 16) + x] = y
             break
 
@@ -456,6 +221,7 @@ class Chunk:
     self.blocks[(y * 16 + z) * 16 + x] = tile_id
     self.__dirty = True
     if calculate_lights:
+      print(f"Chunk[x={self.x},z={self.z}] set tile {tile_id} ({x},{y},{z}) ({x + self.x * 16}, {y}, {z + self.z * 16})")
       self.calculate_light_heightmap(x, z, x + 1, z + 1)
 
   def get_tile(self, x: int, y: int, z: int):
@@ -665,7 +431,6 @@ class Chunk:
                 continue
              tile_type = TILE_TYPES[tile_id]
              if tile_type.is_tickable:
-                print("tickable")
                 TILE_TYPES[tile_id].random_tick(self.world, x + self.x * 16, y, z + self.z * 16, tile_id)
                 return
              
@@ -677,6 +442,7 @@ class Chunk:
   def render(self, layer: RenderLayer, texture_manager: TextureManager):
     if self.__dirty:
       self.rebuild_layers(texture_manager)
+      print(f"Chunk[x={self.x},z={self.z}] rendered")
       self.__dirty = False
 
     glCallList(self.list + layer.value)
@@ -687,15 +453,18 @@ class Chunk:
 class World:
   def __init__(self, game: Game):
     self.game = game
-    self.x_chunks = 4
-    self.z_chunks = 4
-    self.chunks: list[Chunk] = []
+    self.x_chunks = 6
+    self.z_chunks = 6
+    self.chunks: list[Chunk] = [None] * (self.x_chunks * self.z_chunks)
     self.game.player = Player(self)
     self.border_clist = glGenLists(2)
     self.border_clist_dirty = True
+
     for x in range(0, self.x_chunks):
       for z in range(0, self.z_chunks):
-        self.chunks.append(Chunk(self, x, z))
+        self.chunks[x * self.z_chunks + z] = Chunk(self, x, z)
+        # self.chunks.append(Chunk(self, x, z))
+        # print(f"Created Chunk[x={x},z={z}]")
 
     for x in range(0, 8):
       for z in range(0, 8):
@@ -715,30 +484,30 @@ class World:
   def get_chunk(self, x: int, z: int):
     if x < 0 or x >= self.x_chunks or z < 0 or z >= self.z_chunks:
       return None
-    return self.chunks[x * 2 + z]
+    return self.chunks[x * self.z_chunks + z]
 
   def set_tile(self, x: int, y: int, z: int, tile_id: int):
     cx = x // 16
     cz = z // 16
     if cx < 0 or cx >= self.x_chunks or cz < 0 or cz >= self.z_chunks or y < 0 or y >= CHUNK_HEIGHT:
       return
-    self.chunks[cx * 2 + cz].set_tile(x % 16, y, z % 16, tile_id)
-    if x == 0:
+    self.chunks[cx * self.z_chunks + cz].set_tile(x % 16, y, z % 16, tile_id)
+    if (x % 16) == 0:
       chunknb = self.get_chunk(cx - 1, cz)
       if chunknb != None:
         chunknb.make_dirty()
 
-    if x == 15:
+    if (x % 16) == 15:
       chunknb = self.get_chunk(cx + 1, cz)
       if chunknb != None:
         chunknb.make_dirty()
 
-    if z == 0:
+    if (z % 16) == 0:
       chunknb = self.get_chunk(cx, cz - 1)
       if chunknb != None:
         chunknb.make_dirty()
     
-    if z == 15:
+    if (z % 16) == 15:
       chunknb = self.get_chunk(cx, cz + 1)
       if chunknb != None:
         chunknb.make_dirty()
@@ -748,22 +517,22 @@ class World:
     cz = z // 16
     if cx < 0 or cx >= self.x_chunks or cz < 0 or cz >= self.z_chunks or y < 0 or y >= CHUNK_HEIGHT:
       return True
-    return self.chunks[cx * 2 + cz].is_lighted(x % 16, y, z % 16)
+    return self.chunks[cx * self.z_chunks + cz].is_lighted(x % 16, y, z % 16)
 
   def get_tile(self, x: int, y: int, z: int):
     cx = x // 16
     cz = z // 16
     if cx < 0 or cx >= self.x_chunks or cz < 0 or cz >= self.z_chunks or y < 0 or y >= CHUNK_HEIGHT:
       return 0
-    return self.chunks[cx * 2 + cz].get_tile(x % 16, y, z % 16)
+    return self.chunks[cx * self.z_chunks + cz].get_tile(x % 16, y, z % 16)
 
   def tick(self):
-    chunk_to_update = random.randint(-5, len(self.chunks) - 1)
+    chunk_to_update = random.randint(-15, len(self.chunks) - 1)
     if chunk_to_update >= 0:
       self.chunks[chunk_to_update].tick()
 
   def render(self):
-    glDisable(GL_FOG)
+    glEnable(GL_FOG)
     glFogi(GL_FOG_MODE, GL_EXP)
     glFogfv(GL_FOG_COLOR, [0.239, 0.686, 0.807, 1])
     
@@ -780,11 +549,10 @@ class World:
       vertex_drawer = VertexDrawer()
       
       vertex_drawer.begin(GL_QUADS)
-      vertex_drawer.color(1.0, 1.0, 1.0, 1.0)
-      vertex_drawer.vertex_uv(0, 100, 64, 0, 1)
-      vertex_drawer.vertex_uv(0, 100, 0, 0, 0)
-      vertex_drawer.vertex_uv(64, 100, 0, 1, 0)
-      vertex_drawer.vertex_uv(64, 100, 64, 1, 1)
+      vertex_drawer.vertex_uv_color(0, 100, 64, 0, 1, 1.0, 0.0, 0.0, 1.0)
+      vertex_drawer.vertex_uv_color(0, 100, 0, 0, 0, 0.0, 1.0, 0.0, 1.0)
+      vertex_drawer.vertex_uv_color(64, 100, 0, 1, 0, 0.0, 0.0, 1.0, 1.0)
+      vertex_drawer.vertex_uv_color(64, 100, 64, 1, 1, 1.0, 0.0, 1.0, 1.0)
       
       vertex_drawer.flush()
       
@@ -805,13 +573,26 @@ class World:
 
       glEndList()
 
-
       self.border_clist_dirty = False
 
-    glBindTexture(GL_TEXTURE_2D, self.game.texture_manager.get("prof.png"))  
-    glCallList(self.border_clist)
-    glBindTexture(GL_TEXTURE_2D, self.game.texture_manager.get("grass.png"))
-    glCallList(self.border_clist + 1)
+
+    if self.game.show_debug:
+      glDisable(GL_FOG)
+      glBindTexture(GL_TEXTURE_2D, self.game.texture_manager.get("prof.png").id)  
+      glCallList(self.border_clist)
+      glPushMatrix()
+      glDisable(GL_CULL_FACE)
+      glTranslatef(16, 50, 16)
+      self.game.draw_text("BRUH", 0, 0, 0xFFFFFF, 0, shadow=False)
+      glPopMatrix()
+      glEnable(GL_CULL_FACE)
+      glEnable(GL_FOG)
+
+    glBindTexture(GL_TEXTURE_2D, self.game.texture_manager.get("grass.png").id)
+    # glCallList(self.border_clist + 1)
+    # glDisable(GL_FOG)
+    # glCallList(self.border_clist + 1)
+    # glEnable(GL_FOG)
 
     for chunk in self.chunks:
       chunk.render(layer=RenderLayers['SOLID'], texture_manager=self.game.texture_manager)
@@ -825,10 +606,8 @@ class World:
     RenderLayers['TRANSLUCENT'].begin()
     for chunk in self.chunks:
       chunk.render(layer=RenderLayers['TRANSLUCENT'], texture_manager=self.game.texture_manager)
-    glDisable(GL_BLEND)
-    glDisable(GL_FOG)
-
     RenderLayers['TRANSLUCENT'].end()
+    glDisable(GL_FOG)
 
   def dispose(self):
     glDeleteLists(self.border_clist, 2)
@@ -877,6 +656,10 @@ class Menu:
         button[3]()
         break
 
+  def render_dirt_bg(self):
+    game.draw_texture(texture_name="bg.png", x=0, y=0, width=self.game.window.scaled_width(), height=self.game.window.scaled_height(), u=0, v=0, us=self.game.window.scaled_width(), vs=self.game.window.scaled_height(), tw=16, th=16, color=0x666666)
+    glColor4f(1.0, 1.0, 1.0, 1.0)
+
   def render(self, game: Game, mouse_pos: tuple[int, int]):
     for button in self.buttons:
       hovered = mouse_pos[0] > button[0][0] and mouse_pos[0] <= button[0][0] + button[1][0] and mouse_pos[1] > button[0][1] and mouse_pos[1] <= button[0][1] + button[1][1]
@@ -885,15 +668,14 @@ class Menu:
 
 class MainMenu(Menu):
   def init_gui(self):
-    self.add_button((self.game.width / 4 - 100, self.game.height / 4 - 24), (200, 20), "PLAY GAME", self.__play)
-    self.add_button((self.game.width / 4 - 100, self.game.height / 4), (200, 20), "QUIT", self.game.shutdown)
+    self.add_button((self.game.window.scaled_width() / 2 - 100, self.game.window.scaled_height() / 2 - 24), (200, 20), "PLAY GAME", self.__play)
+    self.add_button((self.game.window.scaled_width() / 2 - 100, self.game.window.scaled_height() / 2), (200, 20), "QUIT", self.game.shutdown)
   
   def __play(self):
     self.game.start_world()
 
   def render(self, game: Game, mouse_pos: tuple[int, int]):
-    game.draw_texture(texture_name="bg.png", x=0, y=0, width=game.width / 2, height=game.height / 2, u=0, v=0, us=game.width / 2, vs=game.height / 2, tw=16, th=16, color=0x666666)
-    glColor4f(1.0, 1.0, 1.0, 1.0)
+    self.render_dirt_bg()
     super().render(game, mouse_pos)
     game.draw_text("VOXELS", 1, 1, 0xFFFFFF, 0)
 
@@ -903,10 +685,9 @@ class LoadingTerrainMenu(Menu):
     self.started = False
 
   def render(self, game: Game, mouse_pos: tuple[int, int]):
-    game.draw_texture(texture_name="bg.png", x=0, y=0, width=game.width / 2, height=game.height / 2, u=0, v=0, us=game.width / 2, vs=game.height / 2, tw=16, th=16, color=0x666666)
-    glColor4f(1.0, 1.0, 1.0, 1.0)
+    self.render_dirt_bg()
     super().render(game, mouse_pos)
-    game.draw_text("GENERATING TERRAIN...", self.game.width / 4, 40, 0xFFFFFF, 0.5)
+    game.draw_text("GENERATING TERRAIN...", self.game.window.scaled_width() / 2, 40, 0xFFFFFF, 0.5)
 
     if self.started:
       self.game.world = World(self.game)
@@ -918,8 +699,8 @@ class LoadingTerrainMenu(Menu):
 
 class PauseMenu(Menu):
   def init_gui(self):
-    self.add_button((self.game.width / 4 - 100, self.game.height / 4 - 48), (200, 20), "CONTINUE GAME", self.__play)
-    self.add_button((self.game.width / 4 - 100, self.game.height / 4 - 24), (200, 20), "RETURN TO TITLE", self.__return_main)
+    self.add_button((self.game.window.scaled_width() / 2 - 100, self.game.window.scaled_height() / 2 - 48), (200, 20), "CONTINUE GAME", self.__play)
+    self.add_button((self.game.window.scaled_width() / 2 - 100, self.game.window.scaled_height() / 2 - 24), (200, 20), "RETURN TO TITLE", self.__return_main)
 
   def __play(self):
     self.game.menu = None
@@ -929,87 +710,15 @@ class PauseMenu(Menu):
     self.game.menu = MainMenu(self.game)
 
   def render(self, game: Game, mouse_pos: tuple[int, int]):
-    game.draw_rect((0, 0), (game.width / 2, game.height / 2), 0x66000000)
+    game.draw_rect((0, 0), (game.window.scaled_width(), self.game.window.scaled_height()), 0x66000000)
     super().render(game, mouse_pos)
-
-class HitResult:
-  def __init__(self, bx, by, bz, tile_id, face) -> None:
-    self.bx = bx
-    self.by = by
-    self.bz = bz
-    self.tile_id = tile_id
-    self.face = face
-
-# Basic unit block based raycast
-# https://gamedev.stackexchange.com/questions/47362/cast-ray-to-select-block-in-voxel-game
-def bresenham(world: World, startPoint, endPoint):
-  startPoint = [int(startPoint[0]),int(startPoint[1]),int(startPoint[2])]
-
-  endPoint = [int(endPoint[0]),int(endPoint[1]),int(endPoint[2])]
-
-  steepXY = (abs(endPoint[1] - startPoint[1]) > abs(endPoint[0] - startPoint[0]))
-  if(steepXY):   
-    startPoint[0], startPoint[1] = startPoint[1], startPoint[0]
-    endPoint[0], endPoint[1] = endPoint[1], endPoint[0]
-
-  steepXZ = (abs(endPoint[2] - startPoint[2]) > abs(endPoint[0] - startPoint[0]))
-  if(steepXZ):
-    startPoint[0], startPoint[2] = startPoint[2], startPoint[0]
-    endPoint[0], endPoint[2] = endPoint[2], endPoint[0]
-
-  delta = [abs(endPoint[0] - startPoint[0]), abs(endPoint[1] - startPoint[1]), abs(endPoint[2] - startPoint[2])]
-
-  errorXY = delta[0] / 2
-  errorXZ = delta[0] / 2
-
-  step = [
-    -1 if startPoint[0] > endPoint[0] else 1,
-    -1 if startPoint[1] > endPoint[1] else 1,
-    -1 if startPoint[2] > endPoint[2] else 1
-  ]
-
-  y = startPoint[1]
-  z = startPoint[2]
-
-  for x in range(startPoint[0], endPoint[0], step[0]):
-    point = [x, y, z]
-
-    if(steepXZ):
-        point[0], point[2] = point[2], point[0]
-    if(steepXY):
-        point[0], point[1] = point[1], point[0]
-
-    tile_id = world.get_tile(point[0], point[1], point[2])
-    if tile_id != 0 and tile_id != 7:
-      return HitResult(point[0], point[1], point[2], tile_id, 0)
-
-    errorXY -= delta[1]
-    errorXZ -= delta[2]
-
-    if(errorXY < 0):
-        y += step[1]
-        errorXY += delta[0]
-
-    if(errorXZ < 0):
-        z += step[2]
-        errorXZ += delta[0]
-  return None
 
 class Game:
   def __init__(self):
-    if not glfw.init():
-      exit(0)
-
-    self.chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!:/"
+    self.chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!:/- "
     self.show_debug = False
-    self.width = 700
-    self.height = 450
-
-    glfw.default_window_hints()
-    self.window = glfw.create_window(self.width, self.height, "Voxels", None, None)
-    self.set_icon("icon.png")
-    glfw.make_context_current(self.window)
-    glfw.swap_interval(1)
+    self.window = GameWindow(700, 450)
+    self.window.init("Voxels")
 
     self.texture_manager = TextureManager()
     self.texture_manager.load('grass.png')
@@ -1023,16 +732,14 @@ class Game:
       'dx': 0,
       'dy': 0
     }
-
     self.running = True
     self.player: Player | None = None 
-    glfw.set_key_callback(self.window, lambda _,key,scancode,action,mods : self.on_key(key, scancode, action, mods))
-    glfw.set_cursor_pos_callback(self.window, lambda _,xpos,ypos : self.on_cursor_pos(xpos, ypos))
-    glfw.set_mouse_button_callback(self.window, lambda _,button,action,mods : self.on_mouse_button(button, action, mods))
-    glfw.set_framebuffer_size_callback(self.window, lambda _,w,h : self.on_framebuffer_size_changed(w, h))
-    glfw.set_scroll_callback(self.window, lambda _w,xoff,yoff : self.on_scroll(xoff, yoff))
+    glfw.set_key_callback(self.window.handle, lambda _,key,scancode,action,mods : self.on_key(key, scancode, action, mods))
+    glfw.set_cursor_pos_callback(self.window.handle, lambda _,xpos,ypos : self.on_cursor_pos(xpos, ypos))
     self.menu = MainMenu(self)
-
+    self.window.mouse_button_func(self.on_mouse_button)
+    self.window.scroll_func(self.on_scroll)
+    self.window.size_changed_func(self.on_framebuffer_size_changed)
     self.world: World | None = None
     self.hit_result: HitResult | None = None
     self.selected_tile = 1
@@ -1044,12 +751,8 @@ class Game:
   def shutdown(self):
     self.running = False
 
-  def set_icon(self, path: str):
-    imicon = Image.open("res/" + path)
-    glfw.set_window_icon(self.window, 1, [imicon])
-
-  def on_scroll(self, xoff, yoff):
-    step = 1 if yoff > 0 else -1
+  def on_scroll(self, x_offset, y_offset):
+    step = 1 if y_offset > 0 else -1
 
     self.selected_tile -= step
 
@@ -1059,47 +762,20 @@ class Game:
     if self.selected_tile > 9:
       self.selected_tile = 1
 
-  def on_framebuffer_size_changed(self, width, height):
-    self.width = width
-    self.height = height
-    glViewport(0, 0, self.width, self.height)
-    self.proj_mat = utils.perspective(1.22172, self.width / self.height, 0.05, 1000.0)
+  def on_framebuffer_size_changed(self):
+    glViewport(0, 0, self.window.width, self.window.height)
     if self.menu != None:
       self.menu.resize()
 
-  def on_mouse_button(self, button, action, mods):
+  def on_mouse_button(self, button: int, action: int):
     if action == glfw.PRESS and button == 0 and self.menu != None:
-      self.menu.mouse_clicked((self.mouse['x'] / 2, self.mouse['y'] / 2))
+      self.menu.mouse_clicked((self.mouse['x'] / self.window.scale_factor, self.mouse['y'] / self.window.scale_factor))
     
     if action == glfw.PRESS and button == 0 and self.menu == None and self.hit_result != None:
       self.world.set_tile(self.hit_result.bx, self.hit_result.by, self.hit_result.bz, 0)
     
     if action == glfw.PRESS and button == 1 and self.menu == None and self.hit_result != None:
-      bx = self.hit_result.bx
-      by = self.hit_result.by
-      bz = self.hit_result.bz
-
-      # if self.hit_result.face == 0:
-      #   by += 1
-
-      # if self.hit_result.face == 1:
-      #   by -= 1
-
-      # if self.hit_result.face == 2:
-      #   bz -= 2
-
-      # if self.hit_result.face == 3:
-      #   bz += 2
-
-      # if self.hit_result.face == 4:
-      #   bx += 1
-
-      # if self.hit_result.face == 5:
-      #   bx -= 1
-
-      print(self.hit_result.face)
-
-      self.world.set_tile(bx, by, bz, self.selected_tile)
+      self.world.set_tile(self.hit_result.bx, self.hit_result.by + 1, self.hit_result.bz, self.selected_tile)
 
   def on_cursor_pos(self, xpos, ypos):
     self.mouse['dx'] = xpos - self.mouse['x']
@@ -1124,12 +800,12 @@ class Game:
       self.selected_tile = key - glfw.KEY_0
 
   def grab_mouse(self):
-    glfw.set_cursor_pos(self.window, self.width / 2, self.height / 2)
-    glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_DISABLED)
+    glfw.set_cursor_pos(self.window.handle, self.window.width / 2, self.window.height / 2)
+    glfw.set_input_mode(self.window.handle, glfw.CURSOR, glfw.CURSOR_DISABLED)
 
   def ungrab_mouse(self):
-    glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_NORMAL)
-    glfw.set_cursor_pos(self.window, self.width / 2, self.height / 2)
+    glfw.set_input_mode(self.window.handle, glfw.CURSOR, glfw.CURSOR_NORMAL)
+    glfw.set_cursor_pos(self.window.handle, self.window.width / 2, self.window.height / 2)
 
   def get_camera_pos(self):
     return [self.player.x, self.player.y, self.player.z]
@@ -1138,12 +814,11 @@ class Game:
     glClearColor(0.239, 0.686, 0.807, 1.0)
     last_time = glfw.get_time()
     frame_counter = 0
-    self.proj_mat = utils.perspective(1.22172, self.width / self.height, 0.05, 1000.0)
     tick_last_time = glfw.get_time()
     tick_delta = 0
 
     while self.running:
-      if glfw.window_should_close(self.window):
+      if self.window.should_close():
         self.running = False
 
       tick_now = glfw.get_time()
@@ -1167,8 +842,7 @@ class Game:
 
       self.render(tick_delta)
       
-      glfw.swap_buffers(self.window)
-      glfw.poll_events()
+      self.window.update_frame()
 
       frame_counter += 1
 
@@ -1186,7 +860,7 @@ class Game:
   def render(self, tick_delta: float):
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glLoadMatrixf(self.proj_mat)
+    gluPerspective(70, self.window.width / self.window.height, 0.05, 1000.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
 
@@ -1218,7 +892,7 @@ class Game:
 
       self.hit_result = bresenham(self.world, start_pos, end_pos)
 
-      glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("grass.png"))  
+      glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("grass.png").id)  
       self.world.render()
 
       if self.hit_result != None:
@@ -1271,12 +945,9 @@ class Game:
 
     glClear(GL_DEPTH_BUFFER_BIT)
 
-    scaled_width = self.width / 2
-    scaled_height = self.height / 2
-
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glOrtho(0, scaled_width, scaled_height, 0, 1000.0, 3000.0)
+    glOrtho(0, self.window.scaled_width(), self.window.scaled_height(), 0, 1000.0, 3000.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     glTranslatef(0.0, 0.0, -2000.0)
@@ -1286,14 +957,14 @@ class Game:
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR)
-    self.draw_texture("gui.png", scaled_width / 2 - 8, scaled_height / 2 - 8, 16, 16, 240, 0, 16, 16, 256, 64)
+    self.draw_texture("gui.png", self.window.scaled_width() / 2 - 8, self.window.scaled_height() / 2 - 8, 16, 16, 240, 0, 16, 16, 256, 64)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    self.draw_texture("gui.png", scaled_width / 2 - 91, scaled_height - 22, 182, 22, 0, 0, 182, 22, 256, 64)
+    self.draw_texture("gui.png", self.window.scaled_width() / 2 - 91, self.window.scaled_height() - 22, 182, 22, 0, 0, 182, 22, 256, 64)
     
-    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("grass.png"))
+    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("grass.png").id)
     glEnable(GL_CULL_FACE)
     glPushMatrix()
-    glTranslatef(scaled_width - 45, 80, 20)
+    glTranslatef(self.window.scaled_width() - 45, 80, 20)
     glRotatef(-20, 1, 0, 0)
     glRotatef(44, 0, 1, 0)
     glTranslatef(0, -10, 0)
@@ -1309,14 +980,14 @@ class Game:
 
     for i in range(0, 9):
       tile_txr = TILE_TYPES[i + 1].north_txr
-      self.draw_texture("grass.png", scaled_width / 2 - 91 + 3 + i * 20, scaled_height - 22 + 3, 16, 16, (tile_txr % 3) * 16, (tile_txr // 3) * 16, 16, 16, 48, 64)
+      self.draw_texture("grass.png", self.window.scaled_width() / 2 - 91 + 3 + i * 20, self.window.scaled_height() - 22 + 3, 16, 16, (tile_txr % 3) * 16, (tile_txr // 3) * 16, 16, 16, 48, 64)
 
-    self.draw_texture("gui.png", scaled_width / 2 - 91 + (self.selected_tile - 1) * 20, scaled_height - 22 - 1, 24, 24, 40, 22, 24, 24, 256, 64)
+    self.draw_texture("gui.png", self.window.scaled_width() / 2 - 91 + (self.selected_tile - 1) * 20, self.window.scaled_height() - 22 - 1, 24, 24, 40, 22, 24, 24, 256, 64)
 
     glDisable(GL_BLEND)
 
     if self.menu != None:
-      self.menu.render(self, (self.mouse['x'] / 2, self.mouse['y'] / 2))
+      self.menu.render(self, (self.mouse['x'] / self.window.scale_factor, self.mouse['y'] / self.window.scale_factor))
 
     if self.world == None:
       return
@@ -1329,13 +1000,14 @@ class Game:
       self.draw_text(f"{'Y: {:.4f}'.format(self.player.y)}", 1, 31, 0xFFFFFF, 0)
       self.draw_text(f"{'Z: {:.4f}'.format(self.player.z)}", 1, 41, 0xFFFFFF, 0)
       self.draw_text(f"SELECTED TILE: {self.selected_tile}", 1, 51, 0xFFFFFF, 0)
-      self.draw_text(f"PYTHON {platform.sys.version_info.major}.{platform.sys.version_info.minor}.{platform.sys.version_info.micro}", scaled_width - 1, 1, 0xFFFFFF, 1)
-      self.draw_text(f"DISPLAY: {self.width}X{self.height}", scaled_width - 1, 21, 0xFFFFFF, 1)
+      self.draw_text(f"PYTHON {platform.sys.version_info.major}.{platform.sys.version_info.minor}.{platform.sys.version_info.micro}", self.window.scaled_width() - 1, 1, 0xFFFFFF, 1)
+      self.draw_text(f"DISPLAY: {self.window.width}X{self.window.height}", self.window.scaled_width() - 1, 21, 0xFFFFFF, 1)
     else:
       self.draw_text("PRESS F3 TO SHOW DEBUG", 1, 11, 0xFFFFFF, 0)
+      self.draw_text("PRESS 1-9 TO SELECT BLOCKS", 1, 21, 0xFFFFFF, 0)
 
   def draw_texture_nineslice(self, texture_name, pos: tuple[int, int], size: tuple[int, int], uv: tuple[int, int], uv_size: tuple[int, int], nineslice: tuple[int, int, int, int], tw: int, th: int):
-    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get(texture_name))
+    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get(texture_name).id)
     glColor4f(1.0, 1.0, 1.0, 1.0)
     glBegin(GL_QUADS) 
     # Top Left
@@ -1389,22 +1061,23 @@ class Game:
     glEnable(GL_TEXTURE_2D)
 
   def draw_texture(self, texture_name, x: int, y: int, width: int, height: int, u: int, v: int, us: int, vs: int, tw: int, th: int, color: int = 0xFFFFFF):
-    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get(texture_name))
+    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get(texture_name).id)
 
     glColor4f((color >> 16 & 0xFF) / 255.0, (color >> 8 & 0xFF) / 255.0, (color & 0xFF) / 255.0, 1.0)
     glBegin(GL_QUADS)
     self.__draw_texture_quad(x, y, width, height, u, v, us, vs, tw, th)
     glEnd()
 
-  def draw_text(self, message: str, x: int, y: int, color: int, align: float):
-    self.__draw_text(message, x + 1, y + 1, 0x000000, align)
+  def draw_text(self, message: str, x: int, y: int, color: int, align: float, shadow=True):
+    if shadow:
+      self.__draw_text(message, x + 1, y + 1, 0x000000, align)
     self.__draw_text(message, x, y, color, align)
 
   def __draw_text(self, message: str, x: int, y: int, color: int, align: float):
     glColor4f((color >> 16 & 0xFF) / 255.0, (color >> 8 & 0xFF) / 255.0, (color & 0xFF) / 255.0, 1.0)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("gui.png"))
+    glBindTexture(GL_TEXTURE_2D, self.texture_manager.get("gui.png").id)
 
     glBegin(GL_QUADS)
 
@@ -1416,8 +1089,8 @@ class Game:
         continue
       
       idx = self.chars.find(char)
-      u = (idx % 20) * 8
-      v = 48 + (idx // 20) * 8
+      u = (idx % 21) * 8
+      v = 48 + (idx // 21) * 8
 
       u0 = u / 256
       v0 = v / 64
@@ -1443,43 +1116,6 @@ class Game:
     if self.world != None:
       self.world.tick()
       self.player.tick()
-      # xa = 0
-      # ya = 0
-      # za = 0
-
-      # if glfw.get_key(self.window, glfw.KEY_W) != glfw.RELEASE:
-      #   za -= 1
-      
-      # if glfw.get_key(self.window, glfw.KEY_S) != glfw.RELEASE:
-      #   za += 1
-
-      # if glfw.get_key(self.window, glfw.KEY_A) != glfw.RELEASE:
-      #   xa -= 1
-      
-      # if glfw.get_key(self.window, glfw.KEY_D) != glfw.RELEASE:
-      #   xa += 1
-
-      # if glfw.get_key(self.window, glfw.KEY_RIGHT_SHIFT) != glfw.RELEASE or glfw.get_key(self.window, glfw.KEY_LEFT_SHIFT) != glfw.RELEASE:
-      #   ya -= 1
-      
-      # if glfw.get_key(self.window, glfw.KEY_SPACE) != glfw.RELEASE:
-      #   ya += 1
-
-      # xa *= 0.61
-      # za *= 0.61
-
-      # psin = math.sin(self.player.rot_y * math.pi / 180.0);
-      # pcos = math.cos(self.player.rot_y * math.pi / 180.0);
-
-      # if self.world.get_tile(int(self.player.x), int(self.player.y) - 2, int(self.player.z)) == 0:
-      #   ya -= 1
-      # else:
-      #   ya = 0
-  
-      # self.player.x += xa * pcos - za * psin
-      # self.player.y += ya
-      # self.player.z += za * pcos + xa * psin
-
 
 if __name__ == "__main__":
   game = Game()

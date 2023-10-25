@@ -329,6 +329,32 @@
      <string>Limpar</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="delete_button">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>80</y>
+      <width>51</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Apagar</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="clear_input_button">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>80</y>
+      <width>51</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>CE</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>

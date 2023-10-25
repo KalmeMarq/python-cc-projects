@@ -9,7 +9,7 @@ class ApplicationWindow(QMainWindow):
     super().__init__()
     self.ui = Ui_MainWindow()
     self.ui.setupUi(self)
-    self.setWindowIcon(QIcon("icon.png"))
+    self.setWindowIcon(QIcon("res/icon.png"))
     self.setWindowTitle("Calculadora")
     self.setWindowFlags(Qt.WindowType.MSWindowsFixedSizeDialogHint)
     self.ui.zero_button.clicked.connect(lambda _ : self.__type_number(0))
@@ -30,11 +30,31 @@ class ApplicationWindow(QMainWindow):
     self.ui.clear_button.clicked.connect(lambda _ : self.__clear_screen())
     self.ui.dot_button.clicked.connect(lambda _ : self.__type_dot())
     self.ui.switch_neg_button.clicked.connect(lambda _ : self.__type_switch_neg())
+    self.ui.clear_input_button.clicked.connect(lambda _ : self.__clear_input())
+    self.ui.delete_button.clicked.connect(lambda _ : self.__delete_digit())
+    self.ui.delete_button.setText("")
+    self.ui.delete_button.setIcon(QIcon("res/delete.png"))
+    self.ui.clear_history_button.clicked.connect(lambda _ : self.ui.listWidget.clear())
+    self.ui.switch_neg_button.setProperty('class', 'centerbuttons')
+    self.ui.dot_button.setProperty('class', 'centerbuttons')
+    self.ui.zero_button.setProperty('class', 'centerbuttons')
+    self.ui.one_button.setProperty('class', 'centerbuttons')
+    self.ui.two_button.setProperty('class', 'centerbuttons')
+    self.ui.three_button.setProperty('class', 'centerbuttons')
+    self.ui.four_button.setProperty('class', 'centerbuttons')
+    self.ui.five_button.setProperty('class', 'centerbuttons')
+    self.ui.six_button.setProperty('class', 'centerbuttons')
+    self.ui.seven_button.setProperty('class', 'centerbuttons')
+    self.ui.eight_button.setProperty('class', 'centerbuttons')
+    self.ui.nine_button.setProperty('class', 'centerbuttons')
+    self.ui.clear_history_button.setText("")
+    self.ui.clear_history_button.setIcon(QIcon("res/bin.png"))
+    self.__apply_custom_styles()
     self.__clear_screen()
+    
+  def __apply_custom_styles(self):
     listfont = self.ui.listWidget.font()
     listfont.setPointSize(12)
-    self.ui.clear_history_button.clicked.connect(lambda _ : self.ui.listWidget.clear())
-
     self.setStyleSheet("""
   QMainWindow {
     background: #202020;
@@ -100,20 +120,6 @@ class ApplicationWindow(QMainWindow):
     self.ui.clear_history_button.setStyleSheet("""
 font-size: 14px;
 """)
-    self.ui.switch_neg_button.setProperty('class', 'centerbuttons')
-    self.ui.dot_button.setProperty('class', 'centerbuttons')
-    self.ui.zero_button.setProperty('class', 'centerbuttons')
-    self.ui.one_button.setProperty('class', 'centerbuttons')
-    self.ui.two_button.setProperty('class', 'centerbuttons')
-    self.ui.three_button.setProperty('class', 'centerbuttons')
-    self.ui.four_button.setProperty('class', 'centerbuttons')
-    self.ui.five_button.setProperty('class', 'centerbuttons')
-    self.ui.six_button.setProperty('class', 'centerbuttons')
-    self.ui.seven_button.setProperty('class', 'centerbuttons')
-    self.ui.eight_button.setProperty('class', 'centerbuttons')
-    self.ui.nine_button.setProperty('class', 'centerbuttons')
-    self.ui.clear_history_button.setText("")
-    self.ui.clear_history_button.setIcon(QIcon("bin.png"))
     self.ui.clear_history_button.setStyleSheet("""
 QPushButton {
   background: transparent;
@@ -128,16 +134,30 @@ QPushButton {
     background: #292929;
   }
 """)
+    
+  def __clear_input(self):
+    if len(self.in_value) > 0:
+      self.in_value = "0"
+      self.ui.input.setText(self.in_value)
+
+  def __delete_digit(self):
+    if len(self.in_value) > 0:
+      self.in_value = self.in_value[:-1]
+
+    if len(self.in_value) == 0:
+      self.in_value = "0"
+
+    self.ui.input.setText(self.in_value)
 
   def __type_number(self, num):
-    if len(self.ui.output.text()) > 0 and self.ui.output.text()[-1] == '=':
+    if len(self.ui.output.text()) > 0 and (self.ui.output.text()[-1] == '=' or not self.in_value.isnumeric()):
       self.ui.output.setText("")
       self.out_value = ""
       self.in_value = ""
       self.in_op = ""
       self.ui.input.setText("")
 
-    if num == 0 and self.in_value[-1] != '0':
+    if num == 0 and len(self.ui.output.text()) > 0 and self.in_value[-1] != '0':
       self.in_value += str(num)
     else:
       if self.in_value == '0':
@@ -172,6 +192,11 @@ QPushButton {
     self.ui.input.setText(self.in_value)
 
   def __type_equals(self):
+    try:
+      float(self.in_value)
+    except Exception:
+      self.__clear_screen()
+      return
 
     if len(self.out_value) == 0:
       self.ui.output.setText(f"{self.in_value} =")
@@ -190,6 +215,11 @@ QPushButton {
         result = left_value * right_value
 
       if self.in_op == "/":
+        if right_value == 0:
+          self.in_value = "Não podes dividir por zero"
+          self.ui.input.setText(self.in_value)
+          return
+
         result = left_value / right_value
 
       self.ui.output.setText(f"{self.out_value} {self.in_op} {self.in_value} =")

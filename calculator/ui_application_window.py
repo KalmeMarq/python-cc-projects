@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'application_window.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.5.2
+## Created by: Qt User Interface Compiler version 6.6.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -103,6 +103,12 @@ class Ui_MainWindow(object):
         self.clear_history_button = QPushButton(self.centralwidget)
         self.clear_history_button.setObjectName(u"clear_history_button")
         self.clear_history_button.setGeometry(QRect(410, 250, 41, 31))
+        self.delete_button = QPushButton(self.centralwidget)
+        self.delete_button.setObjectName(u"delete_button")
+        self.delete_button.setGeometry(QRect(10, 80, 51, 41))
+        self.clear_input_button = QPushButton(self.centralwidget)
+        self.clear_input_button.setObjectName(u"clear_input_button")
+        self.clear_input_button.setGeometry(QRect(60, 80, 51, 41))
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -134,5 +140,7 @@ class Ui_MainWindow(object):
         self.clear_button.setText(QCoreApplication.translate("MainWindow", u"C", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Hist\u00f3rico", None))
         self.clear_history_button.setText(QCoreApplication.translate("MainWindow", u"Limpar", None))
+        self.delete_button.setText(QCoreApplication.translate("MainWindow", u"Apagar", None))
+        self.clear_input_button.setText(QCoreApplication.translate("MainWindow", u"CE", None))
     # retranslateUi
 
