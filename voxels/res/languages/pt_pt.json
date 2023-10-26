@@ -1,0 +1,15 @@
+{
+  "menu.play": "Jogar",
+  "menu.settings": "Definições",
+  "menu.quit": "Sair",
+  "menu.generating_terrain": "A gerar terreno...",
+  "menu.fog_distance": "Nevoeiro",
+  "menu.fog_distance.far": "Longe",
+  "menu.fog_distance.normal": "Normal",
+  "menu.fog_distance.closest": "Perto",
+  "menu.block_preview": "Pre-visualização do bloco",
+  "menu.sound": "Som",
+  "menu.done": "Concluído",
+  "menu.option_value": "{}: {}",
+  "menu.game_menu": "Menu do jogo"
+}

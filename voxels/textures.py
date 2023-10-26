@@ -24,7 +24,7 @@ class Texture:
     glBindTexture(GL_TEXTURE_2D, self.__id)
 
   def upload_to_gpu(self):
-    image = Image.open("res/" + self.__path).convert("RGBA")
+    image = Image.open("res/textures/" + self.__path).convert("RGBA")
     self.__width = image.width
     self.__height = image.height
 

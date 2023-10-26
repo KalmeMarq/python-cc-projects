@@ -1,0 +1,12 @@
+{
+  "menu.play": "Play",
+  "menu.settings": "Settings",
+  "menu.quit": "Quit",
+  "menu.generating_terrain": "Generating terrain...",
+  "menu.fog_distance": "Fog Distance",
+  "menu.block_preview": "Block Preview",
+  "menu.sound": "Sound",
+  "menu.done": "Done",
+  "menu.option_value": "{}: {}",
+  "menu.game_menu": "Game Menu"
+}

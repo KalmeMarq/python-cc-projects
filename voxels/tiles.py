@@ -1,9 +1,11 @@
 from __future__ import annotations
 from typing import Dict
+import json
+from utils import JSONWithCommentsDecoder
 
-TILE_TYPES: Dict[int, TileType] = {}
+BLOCK_TYPES: Dict[int, BlockType] = {}
 
-class TileType:
+class BlockType:
   def __init__(self, tile_id: int, down_txr: int, up_txr: int, north_txr: int, south_txr: int, west_txr: int, east_txr: int, is_tickable = False, allows_light_through = False, is_collidable = True) -> None:
     self.tile_id = tile_id
     self.down_txr = down_txr
@@ -129,12 +131,27 @@ class TileType:
       if world.get_tile(x, y - 1, z) == 0:
         world.set_tile(x, y - 1, z, 7)
 
-TILE_TYPES[1] = TileType(1, 1, 3, 0, 0, 0, 0) # GRASS BLOCK
-TILE_TYPES[2] = TileType(2, 1, 1, 1, 1, 1, 1) # DIRT
-TILE_TYPES[3] = TileType(3, 4, 4, 4, 4, 4, 4) # STONE
-TILE_TYPES[4] = TileType(4, 2, 2, 5, 5, 5, 5) # LOG
-TILE_TYPES[5] = TileType(5, 6, 6, 6, 6, 6, 6) # PLANKS
-TILE_TYPES[6] = TileType(6, 7, 7, 7, 7, 7, 7) # SAND
-TILE_TYPES[7] = TileType(7, 8, 8, 8, 8, 8, 8, allows_light_through=True, is_tickable=True, is_collidable=False) # WATER
-TILE_TYPES[8] = TileType(8, 11, 11, 11, 11, 11, 11) # LEAVES
-TILE_TYPES[9] = TileType(10, 10, 10, 10, 10, 10, 10) # NOT BEDROCK
+with open("res/blocks.json") as f:
+  blocks_data = json.load(f, cls=JSONWithCommentsDecoder)
+  for block_data in blocks_data:
+    tile_id = block_data['id']
+    if isinstance(block_data.get('textures'), int):
+      txr_idx = block_data.get('textures')
+      down_txr = txr_idx
+      up_txr = txr_idx
+      north_txr = txr_idx
+      south_txr = txr_idx
+      west_txr = txr_idx
+      east_txr = txr_idx
+    else:
+      down_txr = block_data['textures']['down']
+      up_txr = block_data['textures']['up']
+      north_txr = block_data['textures']['north']
+      south_txr = block_data['textures']['south']
+      west_txr = block_data['textures']['west']
+      east_txr = block_data['textures']['east']
+    is_tickable = block_data.get('is_tickable') if block_data.get('is_tickabke') != None else False 
+    allows_light_through = block_data.get('allows_light_through') if block_data.get('allows_light_through') != None else False
+    is_collidable = block_data.get('is_collidable') if block_data.get('is_collidable') != None else True
+
+    BLOCK_TYPES[tile_id] = BlockType(tile_id, down_txr, up_txr, north_txr, south_txr, west_txr, east_txr, is_tickable, allows_light_through, is_collidable)

@@ -3,7 +3,8 @@ import glfw
 import PIL.Image as Image
 
 class GameWindow:
-  def __init__(self, width: int, height: int):
+  def __init__(self, game, width: int, height: int):
+    self.__game = game
     self.__width = width
     self.__height = height
     self.__mouse_button_callback: Callable[[int, int], None] | None = None
@@ -30,7 +31,8 @@ class GameWindow:
     vidmode = glfw.get_video_mode(prim_mon)
     glfw.set_window_pos(self.__handle, int(vidmode.size.width / 2 - self.width / 2), int(vidmode.size.height / 2 - self.height / 2))
 
-    glfw.swap_interval(1)
+    self.__vsync = self.__game.settings.vsync
+    glfw.swap_interval(1 if self.__vsync else 0)
     glfw.show_window(self.__handle)
 
     glfw.set_framebuffer_size_callback(self.__handle, lambda _, w, h: self.__on_framebuffer_size_changed(w, h))
