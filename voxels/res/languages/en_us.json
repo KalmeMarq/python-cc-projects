@@ -4,9 +4,17 @@
   "menu.quit": "Quit",
   "menu.generating_terrain": "Generating terrain...",
   "menu.fog_distance": "Fog Distance",
+  "menu.fog_distance.far": "Far",
+  "menu.fog_distance.normal": "Normal",
+  "menu.fog_distance.closest": "Closest",
   "menu.block_preview": "Block Preview",
   "menu.sound": "Sound",
+  "menu.vsync": "Vsync",
+  "menu.on": "ON",
+  "menu.off": "OFF",
   "menu.done": "Done",
   "menu.option_value": "{}: {}",
-  "menu.game_menu": "Game Menu"
+  "menu.game_menu": "Game Menu",
+  "menu.continue_game": "Continue Game",
+  "menu.return_to_title": "Return to Title"
 }

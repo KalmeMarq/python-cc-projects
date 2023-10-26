@@ -10,7 +10,7 @@ class Player:
   def __init__(self, world):
     self.world = world
     self.x = 9
-    self.y = 20
+    self.y = 45
     self.z = 9
     self.old_x = 0
     self.old_y = 0

@@ -7,9 +7,14 @@
   "menu.fog_distance.far": "Longe",
   "menu.fog_distance.normal": "Normal",
   "menu.fog_distance.closest": "Perto",
-  "menu.block_preview": "Pre-visualização do bloco",
+  "menu.block_preview": "Visualiz. de bloco",
   "menu.sound": "Som",
+  "menu.vsync": "V-sync",
+  "menu.on": "Sim",
+  "menu.off": "Não",
   "menu.done": "Concluído",
   "menu.option_value": "{}: {}",
-  "menu.game_menu": "Menu do jogo"
+  "menu.game_menu": "Menu do jogo",
+  "menu.continue_game": "Continuar jogo",
+  "menu.return_to_title": "Voltar ao menu principal"
 }

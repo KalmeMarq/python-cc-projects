@@ -1,5 +1,6 @@
 import random
 import time
+from perlin_noise import PerlinNoise
 from OpenGL.GL import *
 from constants import *
 from player import Player
@@ -39,20 +40,24 @@ class Chunk:
   def make_dirty(self):
     self.__dirty = True
 
-  def generate(self):
+  def generate(self):    
     for x in range(16):
-      for y in range(CHUNK_HEIGHT):
-        for z in range(16):
-          if y > 32:
+      for z in range(16):
+        max_y = 31 + self.world.noise.noise([(x + self.z * 16) / 256, z + (self.x * 16) / 256]) * 6
+        
+        for y in range(0, int(max_y)):
+          if y > 64:
             continue
           elif y == 0:
             self.blocks[(y * 16 + z) * 16 + x] = 9
-          elif y < 10:
+          elif y < 29:
             self.blocks[(y * 16 + z) * 16 + x] = 2 if random.randint(0, 17) - y < 1 else 3
-          elif y < 15:
+          elif y < 30:
             self.blocks[(y * 16 + z) * 16 + x] = 2
-          elif y == 15:
+          elif y == int(max_y) - 1:
             self.blocks[(y * 16 + z) * 16 + x] = 1
+          else:
+            self.blocks[(y * 16 + z) * 16 + x] = 2
 
     if random.randint(0, 200) < 150:
       randpos_x = random.randint(0, 10)
@@ -125,13 +130,13 @@ class Chunk:
             if world.is_lighted(bx, by - 1, bz):
               light_multiplier = 0.4
 
-            u = (tile_type.down_txr % 3) * 16
-            v = tile_type.down_txr // 3 * 16
+            u = (tile_type.down_txr % 16) * 16
+            v = tile_type.down_txr // 16 * 16
 
-            u0 = u / 48.0
-            v0 = v / 64.0
-            u1 = (u + 16) / 48.0
-            v1 = (v + 16) / 64.0
+            u0 = u / 256.0
+            v0 = v / 256.0
+            u1 = (u + 16) / 256.0
+            v1 = (v + 16) / 256.0
 
             vertex_drawer.color(0.6 * light_multiplier, 0.6 * light_multiplier, 0.6 * light_multiplier, 1.0)
             vertex_drawer.vertex_uv(x0, y0, z1, u0, v1)
@@ -145,13 +150,13 @@ class Chunk:
             if world.is_lighted(bx, by + 1, bz):
               light_multiplier = 0.4
             
-            u = (tile_type.up_txr % 3) * 16
-            v = tile_type.up_txr // 3 * 16
+            u = (tile_type.up_txr % 16) * 16
+            v = tile_type.up_txr // 16 * 16
 
-            u0 = u / 48.0
-            v0 = v / 64.0
-            u1 = (u + 16) / 48.0
-            v1 = (v + 16) / 64.0
+            u0 = u / 256.0
+            v0 = v / 256.0
+            u1 = (u + 16) / 256.0
+            v1 = (v + 16) / 256.0
 
             vertex_drawer.color(1.0 * light_multiplier, 1.0 * light_multiplier, 1.0 * light_multiplier, 1.0)
             vertex_drawer.vertex_uv(x1, y1, z1, u1, v1)
@@ -165,13 +170,13 @@ class Chunk:
             if world.is_lighted(bx, by, bz - 1):
               light_multiplier = 0.4
             
-            u = (tile_type.north_txr % 3) * 16
-            v = tile_type.north_txr // 3 * 16
+            u = (tile_type.north_txr % 16) * 16
+            v = tile_type.north_txr // 16 * 16
 
-            u0 = u / 48.0
-            v0 = v / 64.0
-            u1 = (u + 16) / 48.0
-            v1 = (v + 16) / 64.0
+            u0 = u / 256.0
+            v0 = v / 256.0
+            u1 = (u + 16) / 256.0
+            v1 = (v + 16) / 256.0
             
             vertex_drawer.color(0.6 * light_multiplier, 0.6 * light_multiplier, 0.6 * light_multiplier, 1.0)
             vertex_drawer.vertex_uv(x0, y1, z0, u1, v0)
@@ -185,13 +190,13 @@ class Chunk:
             if world.is_lighted(bx, by, bz + 1):
               light_multiplier = 0.4
 
-            u = (tile_type.south_txr % 3) * 16
-            v = tile_type.south_txr // 3 * 16
+            u = (tile_type.south_txr % 16) * 16
+            v = tile_type.south_txr // 16 * 16
 
-            u0 = u / 48.0
-            v0 = v / 64.0
-            u1 = (u + 16) / 48.0
-            v1 = (v + 16) / 64.0
+            u0 = u / 256.0
+            v0 = v / 256.0
+            u1 = (u + 16) / 256.0
+            v1 = (v + 16) / 256.0
 
             vertex_drawer.color(0.6 * light_multiplier, 0.6 * light_multiplier, 0.6 * light_multiplier, 1.0)
             vertex_drawer.vertex_uv(x0, y1, z1, u0, v0)
@@ -205,13 +210,13 @@ class Chunk:
             if world.is_lighted(bx - 1, by, bz):
               light_multiplier = 0.4
 
-            u = (tile_type.west_txr % 3) * 16
-            v = tile_type.west_txr // 3 * 16
+            u = (tile_type.west_txr % 16) * 16
+            v = tile_type.west_txr // 16 * 16
 
-            u0 = u / 48.0
-            v0 = v / 64.0
-            u1 = (u + 16) / 48.0
-            v1 = (v + 16) / 64.0
+            u0 = u / 256.0
+            v0 = v / 256.0
+            u1 = (u + 16) / 256.0
+            v1 = (v + 16) / 256.0
 
             vertex_drawer.color(0.8 * light_multiplier, 0.8 * light_multiplier, 0.8 * light_multiplier, 1.0)
             vertex_drawer.vertex_uv(x0, y1, z1, u1, v0)
@@ -225,13 +230,13 @@ class Chunk:
             if world.is_lighted(bx + 1, by, bz):
               light_multiplier = 0.4
 
-            u = (tile_type.east_txr % 3) * 16
-            v = tile_type.east_txr // 3 * 16
+            u = (tile_type.east_txr % 16) * 16
+            v = tile_type.east_txr // 16 * 16
 
-            u0 = u / 48.0
-            v0 = v / 64.0
-            u1 = (u + 16) / 48.0
-            v1 = (v + 16) / 64.0
+            u0 = u / 256.0
+            v0 = v / 256.0
+            u1 = (u + 16) / 256.0
+            v1 = (v + 16) / 256.0
 
             vertex_drawer.color(0.8 * light_multiplier, 0.8 * light_multiplier, 0.8 * light_multiplier, 1.0)
             vertex_drawer.vertex_uv(x1, y0, z1, u0, v1)
@@ -321,6 +326,7 @@ class World:
     self.game.player = Player(self)
     self.border_clist = glGenLists(1)
     self.border_clist_dirty = True
+    self.noise = PerlinNoise(octaves=2, seed=1)
 
     for x in range(0, self.x_chunks):
       for z in range(0, self.z_chunks):
