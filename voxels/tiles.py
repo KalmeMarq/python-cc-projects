@@ -30,13 +30,13 @@ class BlockType:
     if tile == 7:
       y1 -= 0.1
 
-    u = (self.down_txr % 3) * 16
-    v = self.down_txr // 3 * 16
+    u = (self.down_txr % 16) * 16
+    v = self.down_txr // 16 * 16
 
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
+    u0 = u / 256.0
+    v0 = v / 256.0
+    u1 = (u + 16) / 256.0
+    v1 = (v + 16) / 256.0
 
     vertex_drawer.color(0.6, 0.6, 0.6, 1.0)
     vertex_drawer.vertex_uv(x0, y0, z1, u0, v1)
@@ -44,13 +44,13 @@ class BlockType:
     vertex_drawer.vertex_uv(x1, y0, z0, u1, v0)
     vertex_drawer.vertex_uv(x1, y0, z1, u1, v1)
 
-    u = (self.up_txr % 3) * 16
-    v = self.up_txr // 3 * 16
+    u = (self.up_txr % 16) * 16
+    v = self.up_txr // 16 * 16
 
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
+    u0 = u / 256.0
+    v0 = v / 256.0
+    u1 = (u + 16) / 256.0
+    v1 = (v + 16) / 256.0
 
     vertex_drawer.color(1.0, 1.0, 1.0, 1.0)
     vertex_drawer.vertex_uv(x1, y1, z1, u1, v1)
@@ -58,13 +58,13 @@ class BlockType:
     vertex_drawer.vertex_uv(x0, y1, z0, u0, v0)
     vertex_drawer.vertex_uv(x0, y1, z1, u0, v1)
 
-    u = (self.north_txr % 3) * 16
-    v = self.north_txr // 3 * 16
+    u = (self.north_txr % 16) * 16
+    v = self.north_txr // 16 * 16
 
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
+    u0 = u / 256.0
+    v0 = v / 256.0
+    u1 = (u + 16) / 256.0
+    v1 = (v + 16) / 256.0
     
     vertex_drawer.color(0.6, 0.6, 0.6, 1.0)
     vertex_drawer.vertex_uv(x0, y1, z0, u1, v0)
@@ -72,13 +72,13 @@ class BlockType:
     vertex_drawer.vertex_uv(x1, y0, z0, u0, v1)
     vertex_drawer.vertex_uv(x0, y0, z0, u1, v1)
 
-    u = (self.south_txr % 3) * 16
-    v = self.south_txr // 3 * 16
+    u = (self.south_txr % 16) * 16
+    v = self.south_txr // 16 * 16
 
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
+    u0 = u / 256.0
+    v0 = v / 256.0
+    u1 = (u + 16) / 256.0
+    v1 = (v + 16) / 256.0
 
     vertex_drawer.color(0.6, 0.6, 0.6, 1.0)
     vertex_drawer.vertex_uv(x0, y1, z1, u0, v0)
@@ -86,13 +86,13 @@ class BlockType:
     vertex_drawer.vertex_uv(x1, y0, z1, u1, v1)
     vertex_drawer.vertex_uv(x1, y1, z1, u1, v0)
 
-    u = (self.west_txr % 3) * 16
-    v = self.west_txr // 3 * 16
+    u = (self.west_txr % 16) * 16
+    v = self.west_txr // 16 * 16
 
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
+    u0 = u / 256.0
+    v0 = v / 256.0
+    u1 = (u + 16) / 256.0
+    v1 = (v + 16) / 256.0
 
     vertex_drawer.color(0.8, 0.8, 0.8, 1.0)
     vertex_drawer.vertex_uv(x0, y1, z1, u1, v0)
@@ -100,13 +100,13 @@ class BlockType:
     vertex_drawer.vertex_uv(x0, y0, z0, u0, v1)
     vertex_drawer.vertex_uv(x0, y0, z1, u1, v1)
 
-    u = (self.east_txr % 3) * 16
-    v = self.east_txr // 3 * 16
+    u = (self.east_txr % 16) * 16
+    v = self.east_txr // 16 * 16
 
-    u0 = u / 48.0
-    v0 = v / 64.0
-    u1 = (u + 16) / 48.0
-    v1 = (v + 16) / 64.0
+    u0 = u / 256.0
+    v0 = v / 256.0
+    u1 = (u + 16) / 256.0
+    v1 = (v + 16) / 256.0
 
     vertex_drawer.color(0.8, 0.8, 0.8, 1.0)
     vertex_drawer.vertex_uv(x1, y0, z1, u0, v1)

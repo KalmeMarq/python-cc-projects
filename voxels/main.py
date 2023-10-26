@@ -74,7 +74,7 @@ class Game:
     }
     self.running = True
     self.player: Player | None = None 
-    self.menu: Menu | None = None
+    self.__menu: Menu | None = None
     self.window.mouse_button_func(self.on_mouse_button)
     self.window.scroll_func(self.on_scroll)
     self.window.size_changed_func(self.on_framebuffer_size_changed)
@@ -90,6 +90,20 @@ class Game:
     self.block_sound = pygame.mixer.Sound("res/sounds/block.mp3")
     self.block_sound.set_volume(0.7)
     self.translations = {}
+
+  @property
+  def menu(self):
+    return self.__menu
+  
+  @menu.setter
+  def menu(self, menu):
+    if self.__menu != None:
+      self.__menu.on_remove()
+
+    self.__menu = menu
+
+    if self.__menu != None:
+      self.__menu.on_display()
 
   def load_translations(self):
     with open(f"res/languages/{self.settings.language}.json", "r", encoding="utf-8") as f:
@@ -152,6 +166,9 @@ class Game:
     self.mouse['y'] = ypos
 
   def on_key(self, key, scancode, action):
+    if action == glfw.PRESS and self.menu != None:
+      self.menu.key_pressed(key)
+
     if action == glfw.PRESS and key == glfw.KEY_ESCAPE and self.menu == None:
       self.menu = PauseMenu(self)
       self.ungrab_mouse()
@@ -219,7 +236,7 @@ class Game:
 
       dx = self.mouse['dx']
       dy = self.mouse['dy']
-      if self.menu == None:
+      if self.menu == None and self.world != None:
         self.player.turn(dx, dy)
       self.mouse['dx'] = 0
       self.mouse['dy'] = 0
@@ -371,7 +388,7 @@ class Game:
 
     for i in range(0, 9):
       tile_txr = BLOCK_TYPES[i + 1].north_txr
-      self.draw_texture("grass.png", self.window.scaled_width() / 2 - 91 + 3 + i * 20, self.window.scaled_height() - 22 + 3, 16, 16, (tile_txr % 3) * 16, (tile_txr // 3) * 16, 16, 16, 48, 64)
+      self.draw_texture("grass.png", self.window.scaled_width() / 2 - 91 + 3 + i * 20, self.window.scaled_height() - 22 + 3, 16, 16, (tile_txr % 16) * 16, (tile_txr // 16) * 16, 16, 16, 256, 256)
 
     self.draw_texture("gui.png", self.window.scaled_width() / 2 - 91 + (self.selected_tile - 1) * 20, self.window.scaled_height() - 22 - 1, 24, 24, 40, 22, 24, 24, 256, 256)
 
